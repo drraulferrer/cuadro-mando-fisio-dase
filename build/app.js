@@ -1,0 +1,820 @@
+/* Cuadro de Mando — Fisioterapia AP DASE Sureste
+   Lógica de carga, cálculo de semáforos, tendencias y render. Vanilla JS.
+   Los datos precargados se inyectan como DATOS_PRECARGADOS. */
+(function () {
+  "use strict";
+
+  // ---- Configuración del semáforo (ver Asunción A1 del spec) ----
+  var TOL_MAYOR = 0.10; // mayor_mejor: ámbar si >= meta*(1-0.10)
+  var TOL_MENOR = 0.30; // menor_mejor: ámbar si <= meta*(1+0.30)
+  var MESES = { ene:1, feb:2, mar:3, abr:4, may:5, jun:6, jul:7, ago:8, sep:9, oct:10, nov:11, dic:12 };
+
+  var UNI_REQ = ["Periodo", "Unidad"];
+  var CMI_REQ = ["Periodo", "Codigo", "Valor"];
+
+  var estado = {
+    data: clon(DATOS_PRECARGADOS),
+    periodos: [],
+    periodoSel: null,
+    sortCol: "Unidad",
+    sortDir: 1,
+    disenoCMI: "tarjetas",   // tarjetas | barras | medidores
+    vistaUnidad: "tabla",    // tabla | heatmap
+  };
+
+  // ---------- utilidades ----------
+  function clon(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function numES(v) {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number") return isNaN(v) ? null : v;
+    var s = String(v).trim();
+    if (s === "" || s === "—" || s === "-" || s.toLowerCase() === "n/d") return null;
+    s = s.replace(/%/g, "").replace(/\s/g, "");
+    if (s.indexOf(",") !== -1) {
+      s = s.replace(/\./g, "").replace(",", "."); // '.' miles, ',' decimal
+    }
+    var n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+
+  function fmt(v, dec) {
+    if (v === null || v === undefined || (typeof v === "number" && isNaN(v))) return "—";
+    if (typeof v !== "number") return String(v);
+    dec = dec === undefined ? 2 : dec;
+    var s = v.toLocaleString("es-ES", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return s;
+  }
+
+  function periodKey(p) {
+    if (!p) return "";
+    var s = String(p).trim();
+    var m = s.match(/^(\d{4})[-\/](\d{1,2})$/); // AAAA-MM
+    if (m) return m[1] + "-" + ("0" + m[2]).slice(-2);
+    m = s.match(/^([A-Za-zÁÉÍÓÚáéíóú]{3,})[-\/\s](\d{4})$/); // Mmm-AAAA
+    if (m) {
+      var mes = MESES[m[1].slice(0, 3).toLowerCase()];
+      if (mes) return m[2] + "-" + ("0" + mes).slice(-2);
+    }
+    return s; // fallback: orden alfabético
+  }
+
+  function ordenarPeriodos(ps) {
+    return ps.slice().sort(function (a, b) {
+      var ka = periodKey(a), kb = periodKey(b);
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    });
+  }
+
+  // ---------- semáforo ----------
+  function estadoMeta(valor, metaNum, direccion) {
+    if (valor === null || metaNum === null || metaNum === undefined) return "neutro";
+    if (direccion === "menor_mejor") {
+      if (valor <= metaNum) return "verde";
+      if (valor <= metaNum * (1 + TOL_MENOR)) return "ambar";
+      return "rojo";
+    }
+    // mayor_mejor (por defecto)
+    if (valor >= metaNum) return "verde";
+    if (valor >= metaNum * (1 - TOL_MAYOR)) return "ambar";
+    return "rojo";
+  }
+
+  function estadoRelativo(valor, media, direccion) {
+    if (valor === null || media === null || media === 0) return "neutro";
+    var dev = (valor - media) / media;
+    var bueno = direccion === "menor_mejor" ? -dev : dev;
+    if (bueno >= 0.05) return "verde";
+    if (bueno <= -0.15) return "rojo";
+    return "ambar";
+  }
+
+  function estadoCMI(reg, valor) {
+    if (reg.EstadoManual) return String(reg.EstadoManual).toLowerCase();
+    var meta = numES(reg.MetaNum);
+    if (valor !== null && meta !== null) return estadoMeta(valor, meta, reg.Direccion);
+    return "neutro";
+  }
+
+  // ---------- acceso a datos por periodo ----------
+  function unidadesDe(periodo) {
+    return estado.data.unidades.filter(function (u) { return u.Periodo === periodo; });
+  }
+  function cmiDe(periodo) {
+    return estado.data.cmi.filter(function (c) { return c.Periodo === periodo; });
+  }
+  function periodoAnterior(periodo) {
+    var idx = estado.periodos.indexOf(periodo);
+    return idx > 0 ? estado.periodos[idx - 1] : null; // periodos en orden ascendente
+  }
+  function mediaOperativa(periodo, clave) {
+    var us = unidadesDe(periodo), vals = [];
+    us.forEach(function (u) { var n = numES(u[clave]); if (n !== null) vals.push(n); });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+  }
+  function valorCMI(periodo, codigo) {
+    var r = cmiDe(periodo).filter(function (c) { return c.Codigo === codigo; })[0];
+    return r ? numES(r.Valor) : null;
+  }
+
+  function recomputarPeriodos() {
+    var set = {};
+    estado.data.unidades.forEach(function (u) { if (u.Periodo) set[u.Periodo] = 1; });
+    estado.data.cmi.forEach(function (c) { if (c.Periodo) set[c.Periodo] = 1; });
+    estado.periodos = ordenarPeriodos(Object.keys(set));
+    if (!estado.periodoSel || estado.periodos.indexOf(estado.periodoSel) === -1) {
+      estado.periodoSel = estado.periodos[estado.periodos.length - 1] || null; // más reciente
+    }
+  }
+
+  // ---------- tendencia ----------
+  function tendencia(actual, anterior, direccion) {
+    if (actual === null || anterior === null) return { cls: "flat", txt: "—", delta: null };
+    var d = actual - anterior;
+    if (Math.abs(d) < 1e-9) return { cls: "flat", txt: "=", delta: 0 };
+    var sube = d > 0;
+    var bueno = direccion === "menor_mejor" ? !sube : sube;
+    var flecha = sube ? "▲" : "▼";
+    var cls = (sube ? "up-" : "down-") + (bueno ? "good" : "bad");
+    return { cls: cls, txt: flecha + " " + fmt(Math.abs(d), 2), delta: d };
+  }
+
+  function sparkline(valores, direccion, metaNum) {
+    var pts = valores.filter(function (v) { return v !== null; });
+    if (pts.length < 2) return "";
+    var w = 230, h = 46, pad = 4;
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    if (metaNum !== null && metaNum !== undefined) { min = Math.min(min, metaNum); max = Math.max(max, metaNum); }
+    var rng = (max - min) || 1;
+    var n = valores.length;
+    var x = function (i) { return pad + (i * (w - 2 * pad)) / (n - 1); };
+    var y = function (v) { return h - pad - ((v - min) / rng) * (h - 2 * pad); };
+    var d = "", first = true, dots = "";
+    for (var i = 0; i < n; i++) {
+      if (valores[i] === null) continue;
+      var px = x(i).toFixed(1), py = y(valores[i]).toFixed(1);
+      d += (first ? "M" : "L") + px + " " + py + " ";
+      dots += '<circle class="spark-dot" cx="' + px + '" cy="' + py + '" r="2.4"/>';
+      first = false;
+    }
+    var metaLine = "";
+    if (metaNum !== null && metaNum !== undefined) {
+      var my = y(metaNum).toFixed(1);
+      metaLine = '<line class="spark-meta" x1="' + pad + '" y1="' + my + '" x2="' + (w - pad) + '" y2="' + my + '"/>';
+    }
+    return '<svg class="spark" width="100%" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" role="img">' +
+      metaLine + '<path class="spark-line" d="' + d.trim() + '"/>' + dots + "</svg>";
+  }
+
+  // ---------- render ----------
+  function el(id) { return document.getElementById(id); }
+
+  function render() {
+    recomputarPeriodos();
+    renderSelectorPeriodo();
+    renderResumen();
+    renderCMI();
+    renderOperativa();
+    renderTendencias();
+    renderEjecutivo();
+    el("fuente").textContent = estado.data.fuente || "";
+  }
+
+  function renderEjecutivo() {
+    var box = el("ejecBox");
+    if (!box) return;
+    var p = estado.periodoSel;
+    var cmi = cmiDe(p);
+    var cuenta = { verde: 0, ambar: 0, rojo: 0, neutro: 0 }, criticos = [];
+    cmi.forEach(function (c) {
+      var e = estadoCMI(c, numES(c.Valor));
+      cuenta[e] = (cuenta[e] || 0) + 1;
+      if (e === "rojo") criticos.push(c.Codigo + " · " + c.Indicador);
+    });
+    var html = "";
+    html += '<div class="ejec-head"><h2>Cuadro de Mando · Fisioterapia AP — DASE Sureste</h2>' +
+      '<div class="hint">Periodo <strong>' + (p || "—") + '</strong> · ' + cmi.length + " indicadores CMI · " + unidadesDe(p).length + " unidades</div></div>";
+    html += '<div class="ejec-sem">' +
+      '<span class="pill verde">' + cuenta.verde + " en meta</span>" +
+      '<span class="pill ambar">' + cuenta.ambar + " en riesgo</span>" +
+      '<span class="pill rojo">' + cuenta.rojo + " críticos</span></div>";
+    if (criticos.length) html += '<div class="aviso error"><strong>Críticos:</strong> ' + criticos.join(" · ") + "</div>";
+
+    html += '<div class="ejec-cols"><div><h3>Indicadores estratégicos (CMI)</h3>';
+    var porObj = gruposCMI(), orden = Object.keys(porObj).sort();
+    orden.forEach(function (obj) {
+      html += '<div class="barras-grupo"><div class="obj-titulo">' + obj + "</div>";
+      porObj[obj].forEach(function (c) { html += bulletBar(c); });
+      html += "</div>";
+    });
+    html += "</div>";
+
+    // mini-mapa de calor de columnas clave por unidad
+    var cols = (estado.data.operativoCols || []);
+    var medias = {};
+    cols.forEach(function (col) { medias[col.clave] = mediaOperativa(p, col.clave); });
+    html += '<div><h3>Unidades (indicadores clave)</h3><table class="heat"><thead><tr><th>Unidad</th>';
+    cols.forEach(function (col) { html += "<th>" + col.etiqueta + "</th>"; });
+    html += "</tr></thead><tbody>";
+    unidadesOrdenadas(p).forEach(function (u) {
+      html += "<tr><td>" + u.Unidad + "</td>";
+      cols.forEach(function (col) {
+        var v = numES(u[col.clave]);
+        var e = v === null ? "nodata" : estadoCelda(col, v, medias);
+        html += '<td class="' + e + '">' + (v === null ? "—" : fmt(v, v % 1 ? 1 : 0)) + "</td>";
+      });
+      html += "</tr>";
+    });
+    html += "</tbody></table></div></div>";
+    box.innerHTML = html;
+  }
+
+  function renderSelectorPeriodo() {
+    var sel = el("periodoSel");
+    sel.innerHTML = "";
+    ordenarPeriodos(estado.periodos).slice().reverse().forEach(function (p) {
+      var o = document.createElement("option");
+      o.value = p; o.textContent = p;
+      if (p === estado.periodoSel) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function renderResumen() {
+    var p = estado.periodoSel;
+    var cmi = cmiDe(p);
+    var cuenta = { verde: 0, ambar: 0, rojo: 0, neutro: 0 };
+    var criticos = [];
+    cmi.forEach(function (c) {
+      var v = numES(c.Valor), e = estadoCMI(c, v);
+      cuenta[e] = (cuenta[e] || 0) + 1;
+      if (e === "rojo") criticos.push(c.Codigo + " · " + c.Indicador);
+    });
+
+    var html = "";
+    html += card("Periodo", p || "—", "azul", cmi.length + " indicadores CMI · " + unidadesDe(p).length + " unidades");
+    html += card("En meta", cuenta.verde, "verde", "indicadores en verde");
+    html += card("En riesgo", cuenta.ambar, "ambar", "indicadores en ámbar");
+    html += card("Críticos", cuenta.rojo, "rojo", "indicadores en rojo");
+    el("resumenCards").innerHTML = html;
+
+    // medias DASE clave
+    var claves = [
+      { c: "DemoraVI", l: "Demora valoración inicial", u: "días", dir: "menor_mejor", meta: 35 },
+      { c: "DemoraTto", l: "Demora inicio tratamiento", u: "días", dir: "menor_mejor", meta: 7 },
+      { c: "ObjAltaPct", l: "Objetivos al alta", u: "%", dir: "mayor_mejor", meta: 80 },
+      { c: "CarteraPct", l: "Cumplimiento de cartera", u: "%", dir: "mayor_mejor", meta: 74.5 },
+    ];
+    var mh = "";
+    claves.forEach(function (k) {
+      var m = mediaOperativa(p, k.c);
+      var e = estadoMeta(m, k.meta, k.dir);
+      mh += '<div class="card ' + e + '"><div class="k">' + k.l + ' (media DASE)</div>' +
+        '<div class="v">' + fmt(m, 2) + ' <span style="font-size:1rem;color:var(--gris)">' + k.u + '</span></div>' +
+        '<div class="det">Meta: ' + (k.dir === "menor_mejor" ? "≤ " : "≥ ") + fmt(k.meta, k.meta % 1 ? 1 : 0) + " " + k.u + '</div></div>';
+    });
+    el("resumenMedias").innerHTML = mh;
+
+    var critBox = el("criticosBox");
+    if (criticos.length) {
+      critBox.className = "aviso error";
+      critBox.innerHTML = "<strong>Indicadores críticos (" + criticos.length + "):</strong> " + criticos.join(" · ");
+    } else {
+      critBox.className = "aviso ok";
+      critBox.innerHTML = "Sin indicadores críticos en este periodo.";
+    }
+  }
+
+  function card(k, v, cls, det) {
+    return '<div class="card ' + cls + '"><div class="k">' + k + '</div><div class="v">' + v +
+      '</div><div class="det">' + (det || "") + "</div></div>";
+  }
+
+  // dominio (máximo del eje) para barras y medidores
+  function dominio(c) {
+    var vals = [numES(c.Valor), numES(c.MetaNum), numES(c.PuntoPartida)].filter(function (x) { return x !== null; });
+    estado.periodos.forEach(function (per) { var x = valorCMI(per, c.Codigo); if (x !== null) vals.push(x); });
+    var max = vals.length ? Math.max.apply(null, vals) : 1;
+    if ((c.Unidad || "").indexOf("%") !== -1 && max <= 100) max = 100; // % a escala 0-100
+    return max <= 0 ? 1 : max * 1.05;
+  }
+
+  function bulletBar(c) {
+    var v = numES(c.Valor), e = estadoCMI(c, v), meta = numES(c.MetaNum), dom = dominio(c);
+    var pct = v === null ? 0 : Math.max(0, Math.min(100, (v / dom) * 100));
+    var metaPct = meta === null ? null : Math.max(0, Math.min(100, (meta / dom) * 100));
+    return '<div class="barra ' + e + '">' +
+      '<div class="blab"><span class="bcod">' + c.Codigo + '</span>' + c.Indicador + '</div>' +
+      '<div class="btrack">' +
+        '<div class="bfill ' + e + '" style="width:' + pct.toFixed(1) + '%"></div>' +
+        (metaPct === null ? "" : '<div class="bmeta" style="left:' + metaPct.toFixed(1) + '%" title="meta ' + (c.Meta || "") + '"></div>') +
+      '</div>' +
+      '<div class="bval">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + " " + (c.Unidad || "") + '</div>' +
+      '</div>';
+  }
+
+  function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+  // fracción de "logro": lleno = mejor, respetando la dirección del indicador
+  function fraccionLogro(valor, dom, direccion) {
+    if (valor === null) return 0;
+    var f = clamp01(valor / dom);
+    return direccion === "menor_mejor" ? 1 - f : f;
+  }
+
+  function gauge(c) {
+    var v = numES(c.Valor), e = estadoCMI(c, v), meta = numES(c.MetaNum), dom = dominio(c);
+    var perf = fraccionLogro(v, dom, c.Direccion);
+    // semicírculo superior: izquierda (fr=0) -> derecha (fr=1), sweep=1 dibuja por arriba
+    var cx = 100, cy = 96, r = 80;
+    function punto(fr, rr) { var a = Math.PI * (1 - fr); return [cx + rr * Math.cos(a), cy - rr * Math.sin(a)]; }
+    var L = punto(0, r), R = punto(1, r);
+    // MISMO trazado para fondo y valor; el valor se revela con dasharray (overlap perfecto)
+    var dPath = "M" + L[0].toFixed(1) + " " + L[1].toFixed(1) + " A" + r + " " + r + " 0 0 1 " + R[0].toFixed(1) + " " + R[1].toFixed(1);
+    var valArc = perf > 0
+      ? '<path class="g-val ' + e + '" d="' + dPath + '" pathLength="100" stroke-dasharray="' + (perf * 100).toFixed(2) + ' 100"/>'
+      : "";
+    var metaTick = "";
+    if (meta !== null) {
+      var fm = clamp01(c.Direccion === "menor_mejor" ? 1 - meta / dom : meta / dom);
+      var pa = punto(fm, r - 11), pb = punto(fm, r + 4);
+      metaTick = '<line class="g-meta" x1="' + pa[0].toFixed(1) + '" y1="' + pa[1].toFixed(1) + '" x2="' + pb[0].toFixed(1) + '" y2="' + pb[1].toFixed(1) + '"/>';
+    }
+    var svg = '<svg viewBox="0 0 200 108" role="img">' +
+      '<path class="g-bg" d="' + dPath + '"/>' + valArc + metaTick + '</svg>';
+    return '<div class="gauge ' + e + '">' +
+      '<div class="gcod">' + c.Codigo + ' <span class="badge ' + e + '">' + e + '</span></div>' +
+      '<div class="gnom">' + c.Indicador + '</div>' + svg +
+      '<div class="gval">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + ' <span class="uni">' + (c.Unidad || "") + '</span></div>' +
+      '<div class="gmetatxt">Meta: ' + (c.Meta || "—") + '</div>' +
+      '</div>';
+  }
+
+  function tarjetaCMI(c, prev) {
+    var v = numES(c.Valor), e = estadoCMI(c, v), meta = numES(c.MetaNum);
+    var serie = estado.periodos.map(function (per) { return valorCMI(per, c.Codigo); });
+    var vAnt = prev ? valorCMI(prev, c.Codigo) : null;
+    var t = tendencia(v, vAnt, c.Direccion);
+    return '<div class="ind ' + e + '">' +
+      '<div class="sem"></div>' +
+      '<div class="cod">' + c.Codigo + ' <span class="badge ' + e + '">' + e + '</span></div>' +
+      '<div class="nom">' + c.Indicador + '</div>' +
+      '<div class="valwrap"><span class="val">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) +
+      '</span><span class="uni">' + (c.Unidad || "") + '</span>' +
+      '<span class="trend ' + t.cls + '" title="vs ' + (prev || "—") + '">' + t.txt + '</span></div>' +
+      sparkline(serie, c.Direccion, meta) +
+      '<div class="meta">Partida: ' + (numES(c.PuntoPartida) === null ? (c.PuntoPartida || "—") : fmt(numES(c.PuntoPartida), 2)) +
+      ' · Meta: ' + (c.Meta || "—") + '</div>' +
+      '</div>';
+  }
+
+  function gruposCMI() {
+    var porObj = {};
+    cmiDe(estado.periodoSel).forEach(function (c) { (porObj[c.Objetivo] = porObj[c.Objetivo] || []).push(c); });
+    return porObj;
+  }
+
+  function renderCMI() {
+    var prev = periodoAnterior(estado.periodoSel);
+    var objetivos = estado.data.objetivos || {};
+    var porObj = gruposCMI();
+    var orden = Object.keys(porObj).sort();
+    var modo = estado.disenoCMI;
+    var html = "";
+    orden.forEach(function (obj) {
+      html += '<div class="' + (modo === "barras" ? "barras-grupo" : "obj-grupo") + '">' +
+        '<div class="obj-titulo">' + obj + " · " + (objetivos[obj] || "") + "</div>";
+      if (modo === "barras") {
+        porObj[obj].forEach(function (c) { html += bulletBar(c); });
+      } else if (modo === "medidores") {
+        html += '<div class="gauge-grid">';
+        porObj[obj].forEach(function (c) { html += gauge(c); });
+        html += "</div>";
+      } else {
+        html += '<div class="ind-grid">';
+        porObj[obj].forEach(function (c) { html += tarjetaCMI(c, prev); });
+        html += "</div>";
+      }
+      html += "</div>";
+    });
+    el("cmiBox").innerHTML = html || '<p class="hint">Sin datos de CMI para este periodo.</p>';
+  }
+
+  // estado de una celda operativa según su columna
+  function estadoCelda(col, valor, medias) {
+    return col.tipo === "relativo"
+      ? estadoRelativo(valor, medias[col.clave], col.direccion)
+      : estadoMeta(valor, col.metaNum, col.direccion);
+  }
+
+  function unidadesOrdenadas(p) {
+    var sc = estado.sortCol, sd = estado.sortDir;
+    return unidadesDe(p).slice().sort(function (a, b) {
+      var va = sc === "Unidad" ? a.Unidad : numES(a[sc]);
+      var vb = sc === "Unidad" ? b.Unidad : numES(b[sc]);
+      if (va === null) return 1; if (vb === null) return -1;
+      if (va < vb) return -1 * sd; if (va > vb) return 1 * sd; return 0;
+    });
+  }
+
+  function renderOperativa() {
+    var p = estado.periodoSel;
+    var cols = estado.data.operativoCols || [];
+    var medias = {};
+    cols.forEach(function (col) { medias[col.clave] = mediaOperativa(p, col.clave); });
+    var us = unidadesOrdenadas(p);
+
+    if (estado.vistaUnidad === "heatmap") {
+      var hh = '<thead><tr><th>Unidad</th>';
+      cols.forEach(function (col) { hh += "<th>" + col.etiqueta + "</th>"; });
+      hh += "</tr></thead><tbody>";
+      us.forEach(function (u) {
+        hh += "<tr><td>" + u.Unidad + "</td>";
+        cols.forEach(function (col) {
+          var v = numES(u[col.clave]);
+          var e = v === null ? "nodata" : estadoCelda(col, v, medias);
+          hh += '<td class="' + e + '">' + (v === null ? "—" : fmt(v, v % 1 ? 1 : 0)) + "</td>";
+        });
+        hh += "</tr>";
+      });
+      hh += "</tbody>";
+      el("uniTabla").innerHTML = hh;
+      el("uniTabla").className = "heat";
+      return;
+    }
+
+    el("uniTabla").className = "uni";
+    var th = '<th data-col="Unidad">Unidad ' + arrow("Unidad") + "</th>";
+    cols.forEach(function (col) {
+      th += '<th data-col="' + col.clave + '">' + col.etiqueta + " " + arrow(col.clave) + "</th>";
+    });
+    var body = "";
+    us.forEach(function (u) {
+      body += "<tr><td>" + u.Unidad + "</td>";
+      cols.forEach(function (col) {
+        var v = numES(u[col.clave]);
+        var cls = v === null ? "nodata" : estadoCelda(col, v, medias);
+        body += '<td class="cell ' + cls + '">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + "</td>";
+      });
+      body += "</tr>";
+    });
+    body += '<tr style="font-weight:700;background:var(--fila-media)"><td>Media DASE</td>';
+    cols.forEach(function (col) { var m = medias[col.clave]; body += '<td class="cell">' + (m === null ? "—" : fmt(m, m % 1 ? 2 : 0)) + "</td>"; });
+    body += "</tr>";
+
+    el("uniTabla").innerHTML = "<thead><tr>" + th + "</tr></thead><tbody>" + body + "</tbody>";
+    Array.prototype.forEach.call(el("uniTabla").querySelectorAll("th"), function (h) {
+      h.addEventListener("click", function () {
+        var c = h.getAttribute("data-col");
+        if (estado.sortCol === c) estado.sortDir *= -1; else { estado.sortCol = c; estado.sortDir = (c === "Unidad" ? 1 : -1); }
+        renderOperativa();
+      });
+    });
+  }
+
+  function arrow(col) {
+    if (estado.sortCol !== col) return '<span class="ar">↕</span>';
+    return '<span class="ar">' + (estado.sortDir === 1 ? "▲" : "▼") + "</span>";
+  }
+
+  function renderTendencias() {
+    var box = el("tendBox");
+    if (estado.periodos.length < 2) {
+      box.innerHTML = '<div class="aviso">No hay periodo anterior para comparar. Carga un fichero con varios periodos (columna <strong>Periodo</strong>) para ver la evolución.</div>';
+      return;
+    }
+    var html = "";
+    // CMI
+    html += '<h2 class="sec">Evolución de los indicadores estratégicos (CMI)</h2><div class="tend-grid">';
+    cmiDe(estado.periodoSel).forEach(function (c) {
+      var serie = estado.periodos.map(function (per) { return valorCMI(per, c.Codigo); });
+      if (serie.filter(function (x) { return x !== null; }).length < 2) return;
+      var meta = numES(c.MetaNum);
+      html += chartBox(c.Codigo + " · " + c.Indicador,
+        estado.periodos[0] + " → " + estado.periodos[estado.periodos.length - 1] +
+        (meta !== null ? "  ·  meta " + fmt(meta, meta % 1 ? 1 : 0) : ""),
+        sparkline(serie, c.Direccion, meta));
+    });
+    html += "</div>";
+    // operativos (media DASE)
+    html += '<h2 class="sec">Evolución de los indicadores operativos (media DASE)</h2><div class="tend-grid">';
+    (estado.data.operativoCols || []).forEach(function (col) {
+      var serie = estado.periodos.map(function (per) { return mediaOperativa(per, col.clave); });
+      if (serie.filter(function (x) { return x !== null; }).length < 2) return;
+      html += chartBox(col.etiqueta, "media DASE por periodo",
+        sparkline(serie, col.direccion, col.metaNum !== undefined ? col.metaNum : null));
+    });
+    html += "</div>";
+    box.innerHTML = html;
+  }
+
+  function chartBox(titulo, sub, svg) {
+    return '<div class="chartbox"><h3>' + titulo + '</h3><div class="csub">' + sub + "</div>" + svg + "</div>";
+  }
+
+  // ---------- carga de ficheros ----------
+  function aviso(msg, tipo) {
+    var b = el("avisoCarga");
+    b.style.display = "block";
+    b.className = "aviso" + (tipo ? " " + tipo : "");
+    b.innerHTML = msg;
+  }
+
+  function detectarYActualizar(filas, nombre) {
+    if (!filas || !filas.length) { aviso("El fichero <strong>" + nombre + "</strong> está vacío o sólo tiene cabeceras.", "error"); return false; }
+    var cols = Object.keys(filas[0]);
+    var tiene = function (req) { return req.every(function (c) { return cols.indexOf(c) !== -1; }); };
+    var esUni = cols.indexOf("Unidad") !== -1 && cols.indexOf("PctAtendida") !== -1 || (cols.indexOf("Unidad") !== -1 && cols.indexOf("DemoraVI") !== -1);
+    var esCMI = cols.indexOf("Codigo") !== -1 && cols.indexOf("Valor") !== -1;
+    if (esCMI && !esUni) {
+      var faltan = CMI_REQ.filter(function (c) { return cols.indexOf(c) === -1; });
+      if (faltan.length) { aviso("Hoja CMI: faltan columnas obligatorias: <strong>" + faltan.join(", ") + "</strong>.", "error"); return false; }
+      estado.data.cmi = filas;
+      return "CMI";
+    }
+    if (esUni) {
+      var faltanU = UNI_REQ.filter(function (c) { return cols.indexOf(c) === -1; });
+      if (faltanU.length) { aviso("Hoja Unidades: faltan columnas obligatorias: <strong>" + faltanU.join(", ") + "</strong>.", "error"); return false; }
+      var avisoCols = (estado.data.operativoCols || []).map(function (c) { return c.clave; }).filter(function (c) { return cols.indexOf(c) === -1; });
+      estado.data.unidades = filas;
+      if (avisoCols.length) aviso("Aviso: faltan columnas de indicadores y se mostrarán como sin dato: " + avisoCols.join(", "), null);
+      return "Unidades";
+    }
+    aviso("No se reconoce la estructura de <strong>" + nombre + "</strong>. Usa la plantilla (hojas Unidades y CMI).", "error");
+    return false;
+  }
+
+  function procesarXLSX(buf, nombre) {
+    try {
+      var wb = XLSX.read(buf, { type: "array" });
+      var encontrado = [];
+      var leeHoja = function (n) {
+        var nom = wb.SheetNames.filter(function (s) { return s.toLowerCase() === n.toLowerCase(); })[0];
+        if (!nom) return null;
+        return XLSX.utils.sheet_to_json(wb.Sheets[nom], { defval: null, raw: true });
+      };
+      var uni = leeHoja("Unidades"), cmi = leeHoja("CMI");
+      if (uni) { var r1 = detectarYActualizar(uni, "Unidades"); if (r1) encontrado.push(r1); }
+      if (cmi) { var r2 = detectarYActualizar(cmi, "CMI"); if (r2) encontrado.push(r2); }
+      if (!uni && !cmi) {
+        // intentar primera hoja como genérica
+        var first = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null, raw: true });
+        var r = detectarYActualizar(first, nombre);
+        if (r) encontrado.push(r);
+      }
+      if (encontrado.length) finCarga(nombre, encontrado);
+    } catch (err) {
+      aviso("No se pudo leer el Excel <strong>" + nombre + "</strong>: " + err.message, "error");
+    }
+  }
+
+  function parseCSV(texto) {
+    texto = texto.replace(/^﻿/, "");
+    // detectar delimitador
+    var primera = texto.split(/\r?\n/)[0] || "";
+    var delim = (primera.split(";").length > primera.split(",").length) ? ";" : ",";
+    var filas = [], campo = "", fila = [], enComillas = false;
+    for (var i = 0; i < texto.length; i++) {
+      var ch = texto[i];
+      if (enComillas) {
+        if (ch === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else enComillas = false; }
+        else campo += ch;
+      } else {
+        if (ch === '"') enComillas = true;
+        else if (ch === delim) { fila.push(campo); campo = ""; }
+        else if (ch === "\n") { fila.push(campo); filas.push(fila); fila = []; campo = ""; }
+        else if (ch === "\r") { /* ignora */ }
+        else campo += ch;
+      }
+    }
+    if (campo !== "" || fila.length) { fila.push(campo); filas.push(fila); }
+    if (!filas.length) return [];
+    var cab = filas[0].map(function (h) { return h.trim(); });
+    var out = [];
+    for (var r = 1; r < filas.length; r++) {
+      if (filas[r].length === 1 && filas[r][0].trim() === "") continue;
+      var obj = {};
+      for (var c = 0; c < cab.length; c++) obj[cab[c]] = filas[r][c] !== undefined ? filas[r][c].trim() : null;
+      out.push(obj);
+    }
+    return out;
+  }
+
+  function procesarCSV(texto, nombre) {
+    var filas = parseCSV(texto);
+    var r = detectarYActualizar(filas, nombre);
+    if (r) finCarga(nombre, [r]);
+  }
+
+  function finCarga(nombre, capas) {
+    estado.periodoSel = null; // se recalcula al más reciente
+    render();
+    aviso("Cargado <strong>" + nombre + "</strong> · capas actualizadas: " + capas.join(", ") +
+      ". Periodos disponibles: " + estado.periodos.join(", ") + ".", "ok");
+  }
+
+  // ---------- lectura de PDF (informe de actividad por centro) ----------
+  var MESES_NOMBRE = {
+    enero: "Ene", febrero: "Feb", marzo: "Mar", abril: "Abr", mayo: "May", junio: "Jun",
+    julio: "Jul", agosto: "Ago", septiembre: "Sep", setiembre: "Sep", octubre: "Oct",
+    noviembre: "Nov", diciembre: "Dic"
+  };
+
+  function parseIntES(s) {
+    if (s === null || s === undefined) return null;
+    var n = parseInt(String(s).replace(/\./g, "").replace(/\s/g, ""), 10);
+    return isNaN(n) ? null : n;
+  }
+
+  function mapaCodigos() {
+    var map = {};
+    [DATOS_PRECARGADOS.unidades, estado.data.unidades].forEach(function (arr) {
+      (arr || []).forEach(function (u) { if (u.Codigo) map[String(u.Codigo).trim()] = u.Unidad; });
+    });
+    return map;
+  }
+
+  function tituloCaso(s) {
+    return String(s || "").toLowerCase().replace(/(^|\s)(\S)/g, function (_, sp, c) { return sp + c.toUpperCase(); }).trim();
+  }
+
+  function periodoDePDF(texto) {
+    var anio = (texto.match(/A[ÑN]O\s+(\d{4})/i) || [])[1];
+    var mesM = (texto.match(/ACUMULADO\s+([A-Za-zÁÉÍÓÚáéíóú]+)/i) || [])[1];
+    var ab = mesM ? (MESES_NOMBRE[mesM.toLowerCase()] || mesM.slice(0, 3)) : null;
+    if (ab && anio) return ab + "-" + anio;
+    if (anio) return anio;
+    return "PDF";
+  }
+
+  // pura y testeable: del texto del PDF -> {periodo, filas:[{Codigo,Unidad,...actividad}]}
+  function parsearActividad(texto) {
+    var periodo = periodoDePDF(texto);
+    var lineas = texto.split(/\n+/);
+    var reCentro = /CENTRO\s+(\d{6,8})\s*-\s*(?:C\.?\s*S\.?\s*)?(.+?)\s*$/i;
+    var filas = [], cur = null;
+    lineas.forEach(function (ln) {
+      var m = ln.match(reCentro);
+      if (m) {
+        if (cur) filas.push(cur);
+        var nombre = mapaCodigos()[m[1]] || tituloCaso(m[2]);
+        cur = { Codigo: m[1], Unidad: nombre, PendientesVI: null, SesionesIndiv: null, ConsultasVI: null };
+        return;
+      }
+      if (!cur) return;
+      var num = (ln.match(/([\d.]+)\s*$/) || [])[1];
+      if (num === undefined) return;
+      if (/pendientes de consulta de valoraci/i.test(ln)) cur.PendientesVI = parseIntES(num);
+      else if (/sesiones individuales/i.test(ln)) cur.SesionesIndiv = parseIntES(num);
+      else if (/consultas de valoraci.*realizadas/i.test(ln)) cur.ConsultasVI = parseIntES(num);
+    });
+    if (cur) filas.push(cur);
+    return { periodo: periodo, filas: filas };
+  }
+
+  function fusionarActividad(periodo, filas) {
+    filas.forEach(function (f) {
+      var rec = estado.data.unidades.filter(function (u) {
+        return u.Periodo === periodo && (u.Codigo === f.Codigo || u.Unidad === f.Unidad);
+      })[0];
+      if (!rec) { rec = { Periodo: periodo, Unidad: f.Unidad, Codigo: f.Codigo }; estado.data.unidades.push(rec); }
+      if (f.PendientesVI !== null) rec.PendientesVI = f.PendientesVI;
+      if (f.SesionesIndiv !== null) rec.SesionesIndiv = f.SesionesIndiv;
+      if (f.ConsultasVI !== null) rec.ConsultasVI = f.ConsultasVI;
+    });
+  }
+
+  // reconstruye líneas a partir de los items posicionados de pdf.js
+  function lineasDeTexto(tc) {
+    var items = (tc.items || []).map(function (it) {
+      return { s: it.str, x: it.transform[4], y: it.transform[5] };
+    });
+    items.sort(function (a, b) { if (Math.abs(a.y - b.y) > 2) return b.y - a.y; return a.x - b.x; });
+    var lineas = [], buf = [], curY = null;
+    items.forEach(function (it) {
+      if (curY !== null && Math.abs(it.y - curY) > 2) { lineas.push(buf.join(" ")); buf = []; }
+      buf.push(it.s); curY = it.y;
+    });
+    if (buf.length) lineas.push(buf.join(" "));
+    return lineas.join("\n");
+  }
+
+  function procesarPDF(buf, nombre) {
+    if (typeof pdfjsLib === "undefined") { aviso("La lectura de PDF no está disponible en esta versión.", "error"); return; }
+    try {
+      if (window.__PDFWORKER_SRC__ && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        var blob = new Blob([window.__PDFWORKER_SRC__], { type: "application/javascript" });
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+      }
+      aviso("Leyendo PDF <strong>" + nombre + "</strong>…", null);
+      pdfjsLib.getDocument({ data: buf }).promise.then(function (doc) {
+        var pags = [];
+        for (var i = 1; i <= doc.numPages; i++) {
+          pags.push(doc.getPage(i).then(function (pg) { return pg.getTextContent().then(lineasDeTexto); }));
+        }
+        return Promise.all(pags);
+      }).then(function (parts) {
+        var r = parsearActividad(parts.join("\n"));
+        if (!r.filas.length) {
+          aviso("No se reconocieron centros en <strong>" + nombre + "</strong>. ¿Es el informe de actividad por centro?", "error");
+          return;
+        }
+        fusionarActividad(r.periodo, r.filas);
+        estado.periodoSel = r.periodo;
+        render();
+        aviso("Cargado PDF <strong>" + nombre + "</strong> · " + r.filas.length + " centros · periodo " + r.periodo +
+          ". Actividad añadida: pendientes VI, sesiones individuales y consultas VI.", "ok");
+      }).catch(function (err) { aviso("No se pudo leer el PDF " + nombre + ": " + err.message, "error"); });
+    } catch (err) { aviso("No se pudo leer el PDF " + nombre + ": " + err.message, "error"); }
+  }
+
+  function manejarFichero(file) {
+    if (!file) return;
+    var nombre = file.name, ext = nombre.split(".").pop().toLowerCase();
+    var reader = new FileReader();
+    if (ext === "xlsx" || ext === "xls") {
+      reader.onload = function (e) { procesarXLSX(new Uint8Array(e.target.result), nombre); };
+      reader.onerror = function () { aviso("No se pudo leer el fichero " + nombre, "error"); };
+      reader.readAsArrayBuffer(file);
+    } else if (ext === "csv" || ext === "txt") {
+      reader.onload = function (e) { procesarCSV(e.target.result, nombre); };
+      reader.onerror = function () { aviso("No se pudo leer el fichero " + nombre, "error"); };
+      reader.readAsText(file, "UTF-8");
+    } else if (ext === "pdf") {
+      reader.onload = function (e) { procesarPDF(new Uint8Array(e.target.result), nombre); };
+      reader.onerror = function () { aviso("No se pudo leer el fichero " + nombre, "error"); };
+      reader.readAsArrayBuffer(file);
+    } else {
+      aviso("Formato no soportado: <strong>." + ext + "</strong>. Usa .xlsx, .csv o .pdf.", "error");
+    }
+  }
+
+  // hook de pruebas (no afecta a la app)
+  window.__test = { parsearActividad: parsearActividad, lineasDeTexto: lineasDeTexto };
+
+  // ---------- tema (estética) ----------
+  var TEMA_KEY = "cmd_fisio_tema";
+  function aplicarTema(t) {
+    if (t) document.body.setAttribute("data-tema", t);
+    else document.body.removeAttribute("data-tema");
+  }
+  function initTema() {
+    var guardado = "";
+    try { guardado = window.localStorage.getItem(TEMA_KEY) || ""; } catch (e) { guardado = ""; }
+    aplicarTema(guardado);
+    var sel = el("temaSel");
+    if (sel) {
+      sel.value = guardado;
+      sel.addEventListener("change", function () {
+        aplicarTema(this.value);
+        try { window.localStorage.setItem(TEMA_KEY, this.value); } catch (e) { /* file:// sin storage */ }
+      });
+    }
+  }
+
+  // ---------- inicialización ----------
+  function init() {
+    initTema();
+    // pestañas (solo las del nav principal, que tienen data-panel)
+    Array.prototype.forEach.call(document.querySelectorAll(".tabs .tab"), function (t) {
+      t.addEventListener("click", function () {
+        document.querySelectorAll(".tabs .tab").forEach(function (x) { x.classList.remove("activa"); });
+        document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("activa"); });
+        t.classList.add("activa");
+        el(t.getAttribute("data-panel")).classList.add("activa");
+      });
+    });
+    el("periodoSel").addEventListener("change", function () { estado.periodoSel = this.value; render(); });
+    var dSel = el("disenoSel");
+    if (dSel) { dSel.value = estado.disenoCMI; dSel.addEventListener("change", function () { estado.disenoCMI = this.value; renderCMI(); }); }
+    Array.prototype.forEach.call(document.querySelectorAll("[data-vista]"), function (b) {
+      b.addEventListener("click", function () {
+        estado.vistaUnidad = b.getAttribute("data-vista");
+        document.querySelectorAll("[data-vista]").forEach(function (x) { x.classList.toggle("activa", x === b); });
+        renderOperativa();
+      });
+    });
+    el("btnCargar").addEventListener("click", function () { el("fileInput").click(); });
+    el("fileInput").addEventListener("change", function () {
+      Array.prototype.forEach.call(this.files, manejarFichero);
+      this.value = "";
+    });
+    el("btnImprimir").addEventListener("click", function () { window.print(); });
+
+    var dz = document.body;
+    ["dragover", "dragenter"].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); el("dropHint").classList.add("over"); });
+    });
+    ["dragleave", "drop"].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); el("dropHint").classList.remove("over"); });
+    });
+    dz.addEventListener("drop", function (e) {
+      if (e.dataTransfer && e.dataTransfer.files) Array.prototype.forEach.call(e.dataTransfer.files, manejarFichero);
+    });
+
+    render();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();

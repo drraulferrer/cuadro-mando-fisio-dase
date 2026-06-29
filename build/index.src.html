@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cuadro de Mando · Fisioterapia AP — DASE Sureste</title>
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<header class="app">
+  <div>
+    <h1>Cuadro de Mando · Fisioterapia AP</h1>
+    <div class="sub">Dirección Asistencial de Atención Primaria — DASE Sureste · Calidad y evaluación (CMI)</div>
+  </div>
+  <div class="controls no-print">
+    <label for="periodoSel">Periodo</label>
+    <select id="periodoSel" aria-label="Periodo"></select>
+    <label for="disenoSel">Diseño CMI</label>
+    <select id="disenoSel" aria-label="Diseño de los indicadores CMI">
+      <option value="tarjetas">Tarjetas</option>
+      <option value="barras">Barras con meta</option>
+      <option value="medidores">Medidores</option>
+    </select>
+    <label for="temaSel">Tema</label>
+    <select id="temaSel" aria-label="Tema (estética)">
+      <option value="">SaludMadrid (oficial)</option>
+      <option value="verde">Verde salud</option>
+      <option value="corporativo">Corporativo sobrio</option>
+      <option value="burdeos">Burdeos institucional</option>
+      <option value="oscuro">Oscuro</option>
+      <option value="contraste">Alto contraste</option>
+    </select>
+    <button class="btn primary" id="btnCargar">⭧ Cargar datos</button>
+    <button class="btn" id="btnImprimir">🖶 Imprimir / PDF</button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.pdf" multiple style="display:none">
+  </div>
+</header>
+
+<main>
+  <div id="dropHint" class="dropzone">
+    <div id="avisoCarga" class="aviso" style="display:none"></div>
+    <p class="hint no-print">Arrastra aquí la plantilla (<strong>.xlsx</strong> / <strong>.csv</strong>) o el informe de actividad en <strong>.pdf</strong>, o usa «Cargar datos». Todo el procesamiento ocurre en tu navegador; no se envía nada a ningún servidor.</p>
+  </div>
+
+  <div class="tabs no-print">
+    <button class="tab activa" data-panel="panelResumen">Resumen</button>
+    <button class="tab" data-panel="panelCMI">CMI estratégico</button>
+    <button class="tab" data-panel="panelOperativa">Por unidad</button>
+    <button class="tab" data-panel="panelTendencias">Tendencias</button>
+    <button class="tab" data-panel="panelEjecutivo">Ejecutivo</button>
+  </div>
+
+  <section id="panelResumen" class="panel activa">
+    <div id="criticosBox" class="aviso"></div>
+    <div id="resumenCards" class="cards"></div>
+    <h2 class="sec">Indicadores operativos clave (media DASE)</h2>
+    <div id="resumenMedias" class="cards"></div>
+  </section>
+
+  <section id="panelCMI" class="panel">
+    <div class="leyenda">
+      <span><span class="dot verde"></span> en meta</span>
+      <span><span class="dot ambar"></span> en riesgo</span>
+      <span><span class="dot rojo"></span> crítico</span>
+      <span><span class="dot neutro"></span> cualitativo / sin meta numérica</span>
+    </div>
+    <div id="cmiBox"></div>
+  </section>
+
+  <section id="panelOperativa" class="panel">
+    <div class="tend-controls no-print">
+      <span class="hint" style="margin:0">Vista:</span>
+      <button class="tab activa" data-vista="tabla">Tabla</button>
+      <button class="tab" data-vista="heatmap">Mapa de calor</button>
+    </div>
+    <p class="hint">En tabla, pulsa una cabecera para ordenar. El color de cada celda compara el valor con su meta (o, en columnas relativas, con la media DASE).</p>
+    <div class="leyenda">
+      <span><span class="dot verde"></span> cumple meta</span>
+      <span><span class="dot ambar"></span> próximo</span>
+      <span><span class="dot rojo"></span> lejos de meta</span>
+    </div>
+    <table class="uni" id="uniTabla"></table>
+  </section>
+
+  <section id="panelTendencias" class="panel">
+    <div id="tendBox"></div>
+  </section>
+
+  <section id="panelEjecutivo" class="panel">
+    <div id="ejecBox"></div>
+  </section>
+</main>
+
+<footer class="app">
+  Fuente de datos: <span id="fuente"></span> · Generado para el Proyecto Técnico de Fisioterapia AP de la DASE Sureste.
+</footer>
+
+<script>/*__SHEETJS__*/</script>
+<script>/*__PDFJS__*/</script>
+<script>window.__PDFWORKER_SRC__ = /*__PDFWORKER__*/;</script>
+<script>var DATOS_PRECARGADOS = /*__DATA__*/;</script>
+<script>/*__APP__*/</script>
+</body>
+</html>

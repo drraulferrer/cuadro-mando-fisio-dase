@@ -1,0 +1,13 @@
+# Dependencias de desarrollo
+node_modules/
+package-lock.json
+
+# Ficheros de prueba (incluyen PDFs/datos reales no publicables)
+test/
+
+# Configuración local del entorno
+.claude/
+
+# Sistema
+.DS_Store
+*.log

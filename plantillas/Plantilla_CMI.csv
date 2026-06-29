@@ -1,0 +1,13 @@
+﻿Periodo;Codigo;Indicador;Objetivo;Valor;Unidad;PuntoPartida;Meta;Direccion;MetaNum;EstadoManual
+Dic-2025;P1-01;Demora de valoración inicial;P1;43,63;días;43,63;≤ 35 días en 18 meses;menor_mejor;35,00;
+Dic-2025;P1-02;Demora de inicio de tratamiento;P1;8,05;días;8,05;≤ 7 días en 18 meses;menor_mejor;7,00;
+Dic-2025;P1-03;Presión asistencial y frecuentación;P1;13,40;ratio;13,40;Reducir la dispersión entre unidades;menor_mejor;;ambar
+Dic-2025;P1-04;Actividad grupal (Educación para la Salud);P1;0,00;% unid.;0,00;≥ 50% de unidades en 12 meses;mayor_mejor;50,00;
+Dic-2025;P2-01;Consecución de objetivos al alta;P2;79,16;%;79,16;≥ 80% en todas las unidades;mayor_mejor;80,00;
+Dic-2025;P2-02;Mejora del dolor al alta;P2;94,00;%;94,00;≥ 90% en todas las unidades;mayor_mejor;90,00;
+Dic-2025;P2-03;Cumplimiento de cartera (506/414);P2;70,17;%;70,17;Todas las unidades > 74,5%;mayor_mejor;74,50;
+Dic-2025;P2-04;Población atendida;P2;2,82;%;2,82;Estable o al alza;mayor_mejor;;verde
+Dic-2025;P3-01;Satisfacción durante la lista de espera;P3;;%;;Medida y al alza tras el triaje;mayor_mejor;;rojo
+Dic-2025;P3-02;Triaje en la primera quincena;P3;0,00;%;0,00;≥ 80% de derivaciones;mayor_mejor;80,00;
+Dic-2025;P4-01;Formación en líneas estratégicas;P4;0,00;%;0,00;≥ 60% en 24 meses;mayor_mejor;60,00;
+Dic-2025;P4-02;Coordinación: circuitos de derivación;P4;0,00;unid.;0,00;Circuito normalizado en las 19 unidades;mayor_mejor;19,00;rojo
