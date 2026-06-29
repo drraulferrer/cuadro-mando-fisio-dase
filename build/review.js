@@ -134,6 +134,8 @@ async function run() {
   // ---- plantillas de presentación ----
   setSel("disenoSel", "okr");
   chk(d.querySelectorAll("#cmiBox .okr-obj").length === 4, "Vista OKR: se esperaban 4 objetivos, hay " + d.querySelectorAll("#cmiBox .okr-obj").length);
+  chk(!d.querySelector("#cmiBox .okr-obj .okr-obj"), "Vista OKR: los 4 bloques deben ser hermanos, no anidados");
+  chk(Array.from(d.querySelectorAll("#cmiBox > .okr-obj")).length === 4, "Vista OKR: los 4 objetivos deben colgar directamente de #cmiBox (separados)");
   chk(d.querySelectorAll("#cmiBox .okr-kr").length === 12, "Vista OKR: se esperaban 12 resultados clave, hay " + d.querySelectorAll("#cmiBox .okr-kr").length);
   chk(d.querySelectorAll("#cmiBox .okr-obj .okr-ring").length >= 3, "Vista OKR: faltan anillos de progreso por objetivo");
   chk(/%/.test((d.querySelector("#cmiBox .kr-pct") || {}).textContent || ""), "Vista OKR: los KR deben mostrar % de cumplimiento");

@@ -306,6 +306,72 @@ table.cmp .kr-cod{margin-right:4px}
   .barra{grid-template-columns:1fr;gap:4px}
   header.app h1{font-size:1.05rem}
 }
+/* ===================================================================
+   REDISEÑO UX/UI 2026 — capa aditiva (no altera el sistema de temas)
+   A: cabina ejecutiva (hero de estado + deltas vs periodo anterior)
+   B: sistema visual + accesibilidad AA (semáforo no-solo-color,
+      focus-visible, navegación fija, micro-interacciones)
+   =================================================================== */
+
+/* — Accesibilidad: foco visible por teclado (WCAG 2.4.7) — */
+button:focus-visible,select:focus-visible,a:focus-visible,
+.tab:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--acento);outline-offset:2px;border-radius:6px}
+.config-btn:focus-visible,.cfg-btn.primary:focus-visible{outline-color:#fff}
+
+/* — Header: chips de estado global con más contraste — */
+.eg-chip{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5)}
+
+/* — Navegación por pestañas fija al hacer scroll — */
+.tabs{position:sticky;top:0;z-index:30;background:var(--gris-bg)}
+
+/* — Semáforo accesible: forma + color (no sólo color) en las pills — */
+.pill::before{font-weight:800;font-size:.82em;line-height:1;margin-right:1px}
+.pill.verde::before{content:"✓"}
+.pill.ambar::before{content:"▲"}
+.pill.rojo::before{content:"✕"}
+.pill.neutro::before{content:"–"}
+.pill .dot{display:none}            /* el glifo sustituye al punto dentro de las pills */
+
+/* — Micro-interacciones sutiles — */
+.card,.ind,.okr-obj,.chartbox{transition:box-shadow .18s ease,transform .18s ease}
+@media (hover:hover){
+  .card:hover,.ind:hover,.chartbox:hover{
+    box-shadow:0 6px 18px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.06);transform:translateY(-2px)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* — Hero de estado (cabina ejecutiva) — */
+.hero-estado{display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+  background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);
+  padding:18px 22px;margin-bottom:18px;border-left:5px solid var(--acento)}
+.hero-ring{flex:0 0 auto;width:104px;height:104px}
+.hero-ring-bg{fill:none;stroke:var(--gris-bg);stroke-width:9}
+.hero-ring-val{fill:none;stroke:var(--acento);stroke-width:9;stroke-linecap:round;
+  transition:stroke-dashoffset .6s ease}
+.hero-ring-val.verde{stroke:var(--verde)}
+.hero-ring-val.ambar{stroke:var(--ambar)}
+.hero-ring-val.rojo{stroke:var(--rojo)}
+.hero-ring-pct{font-size:23px;font-weight:800;fill:var(--azul-texto)}
+.hero-ring-cap{font-size:8.5px;font-weight:700;fill:var(--gris);letter-spacing:.04em}
+.hero-main{flex:1 1 260px;min-width:220px}
+.hero-title{font-size:.74rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.05em}
+.hero-sub{font-size:.86rem;color:var(--gris);margin-top:2px}
+.hero-counts{display:flex;gap:10px;flex-wrap:wrap;margin-top:11px}
+.hero-count{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;
+  font-weight:700;font-size:.92rem;border:1px solid transparent}
+.hero-count .n{font-size:1.25rem;font-weight:800}
+.hero-count .ico{font-weight:900}
+.hero-count.verde{background:var(--verde-bg);color:var(--verde)}
+.hero-count.ambar{background:var(--ambar-bg);color:var(--ambar)}
+.hero-count.rojo{background:var(--rojo-bg);color:var(--rojo)}
+
+/* — Delta vs periodo anterior en las medias DASE — */
+.card .delta{display:inline-flex;align-items:center;gap:4px;font-size:.74rem;font-weight:700;margin-top:6px}
+.card .delta.up-good,.card .delta.down-good{color:var(--verde)}
+.card .delta.up-bad,.card .delta.down-bad{color:var(--rojo)}
+.card .delta.flat{color:var(--gris)}
+
 @media print{
   header.app{background:var(--azul)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .controls,.tabs,.tend-controls,.dropzone-hint,#fileInput,.no-print{display:none!important}

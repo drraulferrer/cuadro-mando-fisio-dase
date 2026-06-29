@@ -182,6 +182,7 @@
     renderEjecutivo();
     renderOKRUnidad();
     renderEstadoGlobal();
+    renderHero();
     // La pestaña Comparativa solo aparece con ≥2 periodos cargados
     var tabComp = document.querySelector('.tabs .tab[data-panel="panelTendencias"]');
     if (tabComp) {
@@ -210,6 +211,40 @@
       '<span class="eg-chip"><span class="dot" style="background:var(--verde)"></span>' + c.verde + " en meta</span>" +
       '<span class="eg-chip"><span class="dot" style="background:var(--ambar)"></span>' + c.ambar + " en riesgo</span>" +
       '<span class="eg-chip"><span class="dot" style="background:var(--rojo)"></span>' + c.rojo + " críticos</span>";
+  }
+
+  // Hero de estado (cabina ejecutiva): donut de % en meta + contadores accesibles
+  function renderHero() {
+    var box = el("heroEstado");
+    if (!box) return;
+    var p = estado.periodoSel;
+    var lista = cmiDe(p);
+    if (!lista.length) { box.style.display = "none"; box.innerHTML = ""; return; }
+    box.style.display = "";
+    var c = { verde: 0, ambar: 0, rojo: 0, neutro: 0 };
+    lista.forEach(function (x) { c[estadoCMI(x, numES(x.Valor))]++; });
+    var conMeta = c.verde + c.ambar + c.rojo;
+    var pct = conMeta ? Math.round((c.verde / conMeta) * 100) : 0;
+    var anillo = pct >= 80 ? "verde" : pct >= 50 ? "ambar" : "rojo";
+    var C = 2 * Math.PI * 44, off = C * (1 - pct / 100);
+    var ring = '<svg class="hero-ring" viewBox="0 0 104 104" role="img" aria-label="' + pct + '% de indicadores en meta">' +
+      '<circle class="hero-ring-bg" cx="52" cy="52" r="44"></circle>' +
+      '<circle class="hero-ring-val ' + anillo + '" cx="52" cy="52" r="44" stroke-dasharray="' + C.toFixed(1) +
+        '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 52 52)"></circle>' +
+      '<text class="hero-ring-pct" x="52" y="50" text-anchor="middle" dominant-baseline="middle">' + pct + '%</text>' +
+      '<text class="hero-ring-cap" x="52" y="67" text-anchor="middle">EN META</text></svg>';
+    var sub = lista.length + ' indicadores CMI · periodo ' + (p || "—") +
+      (c.neutro ? ' · ' + c.neutro + ' cualitativos' : '');
+    box.innerHTML = ring +
+      '<div class="hero-main">' +
+        '<div class="hero-title">Situación global del cuadro de mando</div>' +
+        '<div class="hero-sub">' + sub + '</div>' +
+        '<div class="hero-counts">' +
+          '<span class="hero-count verde"><span class="ico">✓</span><span class="n">' + c.verde + '</span> en meta</span>' +
+          '<span class="hero-count ambar"><span class="ico">▲</span><span class="n">' + c.ambar + '</span> en riesgo</span>' +
+          '<span class="hero-count rojo"><span class="ico">✕</span><span class="n">' + c.rojo + '</span> críticos</span>' +
+        '</div>' +
+      '</div>';
   }
 
   function renderEjecutivo() {
@@ -312,12 +347,19 @@
       { c: "CarteraPct", l: "Cumplimiento de cartera", u: "%", dir: "mayor_mejor", meta: 74.5 },
     ];
     var mh = "";
+    var prev = periodoAnterior(p);
     claves.forEach(function (k) {
       var m = mediaOperativa(p, k.c);
       var e = estadoMeta(m, k.meta, k.dir);
+      var mAnt = prev ? mediaOperativa(prev, k.c) : null;
+      var t = (mAnt !== null && m !== null) ? tendencia(m, mAnt, k.dir) : null;
+      var deltaHTML = (t && t.delta !== null && t.delta !== 0)
+        ? '<div class="delta ' + t.cls + '" title="vs ' + prev + '">' + t.txt + ' ' + k.u + ' vs ' + prev + '</div>'
+        : '';
       mh += '<div class="card ' + e + '"><div class="k">' + k.l + ' (media DASE)</div>' +
         '<div class="v">' + fmt(m, 2) + ' <span style="font-size:1rem;color:var(--gris)">' + k.u + '</span></div>' +
-        '<div class="det">Meta: ' + (k.dir === "menor_mejor" ? "≤ " : "≥ ") + fmt(k.meta, k.meta % 1 ? 1 : 0) + " " + k.u + '</div></div>';
+        '<div class="det">Meta: ' + (k.dir === "menor_mejor" ? "≤ " : "≥ ") + fmt(k.meta, k.meta % 1 ? 1 : 0) + " " + k.u + '</div>' +
+        deltaHTML + '</div>';
     });
     el("resumenMedias").innerHTML = mh;
 
@@ -492,7 +534,7 @@
           '<div class="kr-foot"><span>Actual: <strong>' + valTxt + "</strong></span>" +
           "<span>Meta: " + (c.Meta || "—") + "</span></div></div>";
       });
-      html += "</div>";
+      html += "</div></div>"; // cierra .okr-krs y .okr-obj
     });
     return html;
   }
