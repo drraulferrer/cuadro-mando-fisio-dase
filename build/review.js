@@ -110,8 +110,10 @@ async function run() {
   const algunaCelda = d.querySelector("#uniTabla tbody td.cell");
   chk(algunaCelda && /\d,\d/.test(d.querySelector("#uniTabla tbody").textContent), "R11: no se ve formato con coma decimal");
 
-  // E5: un solo periodo -> tendencias informa que no hay comparación
-  chk(/no hay periodo anterior/i.test(d.getElementById("tendBox").textContent), "E5: con 1 periodo, Tendencias debe avisar de falta de comparación");
+  // E5: un solo periodo -> pestaña Comparativa oculta + aviso de falta de datos
+  const tabComp = d.querySelector('.tabs .tab[data-panel="panelTendencias"]');
+  chk(tabComp.style.display === "none", "E5: con 1 periodo la pestaña Comparativa debe estar oculta");
+  chk(/dos periodos/i.test(d.getElementById("tendBox").textContent), "E5: con 1 periodo, Comparativa debe pedir cargar dos periodos");
 
   // media DASE cartera (P2-03) calculada correctamente
   const cartera = [72.90,97.30,50.60,78.40,59.20,61.80,50.50,98.50,82.40,84.40,82.70,77.30,75.40,55.40,75.40,48.10,71.60,58.60,52.80];
@@ -159,10 +161,11 @@ async function run() {
   btnTabla.dispatchEvent(new w.Event("click"));
   chk(d.querySelector("#uniTabla").classList.contains("uni"), "Volver a tabla: la clase no volvió a uni");
 
-  // vista ejecutiva (1 página)
+  // vista ejecutiva (1 página): objetivos OKR + heatmap sin desbordes
   chk(d.querySelectorAll("#ejecBox .ejec-sem .pill").length === 3, "Ejecutivo: faltan las 3 píldoras de semáforo");
-  chk(d.querySelectorAll("#ejecBox .barra").length === 12, "Ejecutivo: se esperaban 12 barras CMI, hay " + d.querySelectorAll("#ejecBox .barra").length);
-  chk(d.querySelectorAll("#ejecBox table.heat tbody tr").length === 19, "Ejecutivo: mini-mapa de calor debería tener 19 unidades");
+  chk(d.querySelectorAll("#ejecBox .ejec-obj").length === 4, "Ejecutivo: se esperaban 4 objetivos OKR, hay " + d.querySelectorAll("#ejecBox .ejec-obj").length);
+  chk(d.querySelectorAll("#ejecBox .ejec-obj .eo-fill").length === 4, "Ejecutivo: faltan barras de progreso por objetivo");
+  chk(d.querySelectorAll("#ejecBox .heat-wrap table.heat tbody tr").length === 19, "Ejecutivo: el mapa de calor debería tener 19 unidades en un contenedor con scroll");
 
   // ---- carga CSV 2 periodos -> R7/R8 tendencias ----
   const csv2 = fs.readFileSync(path.join(ROOT, "test", "CMI_2periodos.csv"), "utf8");
@@ -172,9 +175,18 @@ async function run() {
   // selector de periodo con 2 opciones
   const ops = d.querySelectorAll("#periodoSel option");
   chk(ops.length === 2, "R7: el selector de periodo debería tener 2 periodos, tiene " + ops.length);
+  // con 2 periodos la pestaña Comparativa aparece
+  chk(d.querySelector('.tabs .tab[data-panel="panelTendencias"]').style.display !== "none", "Comparativa: con 2 periodos la pestaña debe mostrarse");
   // tendencias ahora con gráficos (svg spark)
   const sparks = d.querySelectorAll("#tendBox svg.spark");
   chk(sparks.length >= 1, "R8: no se generan gráficos de tendencia con 2 periodos");
+  // comparativa A vs B: tabla con variación
+  chk(!!d.querySelector("#tendBox table.cmp"), "Comparativa: debe mostrarse la tabla de comparación A vs B");
+  (function(){
+    const filas = Array.from(d.querySelectorAll("#tendBox table.cmp tbody tr"));
+    const f101 = filas.find(r => /P1-01/.test(r.textContent));
+    chk(f101 && f101.querySelector(".cmp-d.mejora"), "Comparativa: P1-01 (43,63→38,10, menos es mejor) debe marcarse como mejora");
+  })();
 
   // ---- E1/E2: fichero malformado ----
   const dom2 = nuevaDOM();

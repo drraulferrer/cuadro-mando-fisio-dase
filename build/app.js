@@ -18,8 +18,9 @@
     periodoSel: null,
     sortCol: "Unidad",
     sortDir: 1,
-    disenoCMI: "tarjetas",   // tarjetas | barras | medidores
+    disenoCMI: "tarjetas",   // tarjetas | barras | medidores | okr
     vistaUnidad: "tabla",    // tabla | heatmap
+    compA: null, compB: null, // periodos a comparar en la pestaña Comparativa
   };
 
   // ---------- utilidades ----------
@@ -179,7 +180,23 @@
     renderTendencias();
     renderEjecutivo();
     renderEstadoGlobal();
+    // La pestaña Comparativa solo aparece con ≥2 periodos cargados
+    var tabComp = document.querySelector('.tabs .tab[data-panel="panelTendencias"]');
+    if (tabComp) {
+      var hayComp = estado.periodos.length >= 2;
+      tabComp.style.display = hayComp ? "" : "none";
+      if (!hayComp && tabComp.classList.contains("activa")) activarTab("panelResumen");
+    }
     el("fuente").textContent = estado.data.fuente || "";
+  }
+
+  function activarTab(panelId) {
+    document.querySelectorAll(".tabs .tab").forEach(function (x) {
+      x.classList.toggle("activa", x.getAttribute("data-panel") === panelId);
+    });
+    document.querySelectorAll(".panel").forEach(function (x) {
+      x.classList.toggle("activa", x.id === panelId);
+    });
   }
 
   function renderEstadoGlobal() {
@@ -213,32 +230,46 @@
       '<span class="pill rojo">' + cuenta.rojo + " críticos</span></div>";
     if (criticos.length) html += '<div class="aviso error"><strong>Críticos:</strong> ' + criticos.join(" · ") + "</div>";
 
-    html += '<div class="ejec-cols"><div><h3>Indicadores estratégicos (CMI)</h3>';
-    var porObj = gruposCMI(), orden = Object.keys(porObj).sort();
+    html += '<div class="ejec-cols">';
+    // Columna izquierda: objetivos en formato OKR (progreso por objetivo)
+    html += '<div><h3>Objetivos estratégicos (OKR)</h3>';
+    var porObj = gruposCMI(), orden = Object.keys(porObj).sort(), objetivos = estado.data.objetivos || {};
+    if (!orden.length) html += '<p class="hint">Sin datos de CMI en este periodo.</p>';
     orden.forEach(function (obj) {
-      html += '<div class="barras-grupo"><div class="obj-titulo">' + obj + "</div>";
-      porObj[obj].forEach(function (c) { html += bulletBar(c); });
-      html += "</div>";
+      var pcts = porObj[obj].map(cumplimientoKR).filter(function (x) { return x !== null; });
+      var avg = pcts.length ? pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length : null;
+      var e = avg === null ? "neutro" : bandaObjetivo(avg);
+      html += '<div class="ejec-obj"><div class="eo-top">' +
+        '<span class="eo-name">' + obj + " · " + (objetivos[obj] || "") + "</span>" +
+        '<span class="eo-pct ' + e + '">' + (avg === null ? "s/d" : Math.round(avg) + "%") + "</span></div>" +
+        '<div class="eo-bar"><div class="eo-fill ' + e + '" style="width:' + (avg === null ? 0 : Math.round(avg)) + '%"></div></div></div>';
     });
     html += "</div>";
 
-    // mini-mapa de calor de columnas clave por unidad
-    var cols = (estado.data.operativoCols || []);
+    // Columna derecha: mapa de calor compacto con las columnas que tienen datos
+    var todas = (estado.data.operativoCols || []);
+    var cols = todas.filter(function (col) { return mediaOperativa(p, col.clave) !== null; });
     var medias = {};
     cols.forEach(function (col) { medias[col.clave] = mediaOperativa(p, col.clave); });
-    html += '<div><h3>Unidades (indicadores clave)</h3><table class="heat"><thead><tr><th>Unidad</th>';
-    cols.forEach(function (col) { html += "<th>" + col.etiqueta + "</th>"; });
-    html += "</tr></thead><tbody>";
-    unidadesOrdenadas(p).forEach(function (u) {
-      html += "<tr><td>" + u.Unidad + "</td>";
-      cols.forEach(function (col) {
-        var v = numES(u[col.clave]);
-        var e = v === null ? "nodata" : estadoCelda(col, v, medias);
-        html += '<td class="' + e + '">' + (v === null ? "—" : fmt(v, v % 1 ? 1 : 0)) + "</td>";
+    html += '<div><h3>Unidades — indicadores clave</h3>';
+    if (!cols.length) {
+      html += '<p class="hint">Sin datos por unidad en este periodo.</p>';
+    } else {
+      html += '<div class="heat-wrap"><table class="heat"><thead><tr><th>Unidad</th>';
+      cols.forEach(function (col) { html += "<th>" + col.etiqueta + "</th>"; });
+      html += "</tr></thead><tbody>";
+      unidadesOrdenadas(p).forEach(function (u) {
+        html += "<tr><td>" + u.Unidad + "</td>";
+        cols.forEach(function (col) {
+          var v = numES(u[col.clave]);
+          var e = v === null ? "nodata" : estadoCelda(col, v, medias);
+          html += '<td class="' + e + '">' + (v === null ? "—" : fmt(v, v % 1 ? 1 : 0)) + "</td>";
+        });
+        html += "</tr>";
       });
-      html += "</tr>";
-    });
-    html += "</tbody></table></div></div>";
+      html += "</tbody></table></div>";
+    }
+    html += "</div></div>";
     box.innerHTML = html;
   }
 
@@ -573,33 +604,83 @@
 
   function renderTendencias() {
     var box = el("tendBox");
-    if (estado.periodos.length < 2) {
-      box.innerHTML = '<div class="aviso">No hay periodo anterior para comparar. Carga un fichero con varios periodos (columna <strong>Periodo</strong>) para ver la evolución.</div>';
+    var ps = estado.periodos;
+    if (ps.length < 2) {
+      box.innerHTML = '<div class="aviso">Carga al menos <strong>dos periodos</strong> (dos documentos del mismo origen) para comparar y ver la evolución.</div>';
       return;
     }
-    var html = "";
-    // CMI
-    html += '<h2 class="sec">Evolución de los indicadores estratégicos (CMI)</h2><div class="tend-grid">';
-    cmiDe(estado.periodoSel).forEach(function (c) {
-      var serie = estado.periodos.map(function (per) { return valorCMI(per, c.Codigo); });
+    if (!estado.compA || ps.indexOf(estado.compA) === -1) estado.compA = ps[ps.length - 2];
+    if (!estado.compB || ps.indexOf(estado.compB) === -1) estado.compB = ps[ps.length - 1];
+    var A = estado.compA, B = estado.compB;
+    var opts = function (sel) {
+      return ps.slice().reverse().map(function (p) {
+        return '<option value="' + p + '"' + (p === sel ? " selected" : "") + ">" + p + "</option>";
+      }).join("");
+    };
+    var html = '<div class="cmp-bar"><span>Comparar</span><select id="cmpA">' + opts(A) +
+      '</select><span>con</span><select id="cmpB">' + opts(B) + "</select></div>";
+
+    // métricas: KR del CMI + operativos (media DASE)
+    var cods = {};
+    cmiDe(A).concat(cmiDe(B)).forEach(function (c) { cods[c.Codigo] = c; });
+    var filas = [];
+    Object.keys(cods).sort().forEach(function (cod) {
+      var m = cods[cod];
+      filas.push({ grupo: "Indicadores estratégicos (CMI)", cod: cod, nombre: m.Indicador, dir: m.Direccion, uni: m.Unidad || "", a: valorCMI(A, cod), b: valorCMI(B, cod) });
+    });
+    (estado.data.operativoCols || []).forEach(function (col) {
+      filas.push({ grupo: "Indicadores operativos (media DASE)", cod: "", nombre: col.etiqueta, dir: col.direccion, uni: "", a: mediaOperativa(A, col.clave), b: mediaOperativa(B, col.clave) });
+    });
+
+    var comparables = filas.filter(function (f) { return f.a !== null && f.b !== null; });
+    if (!comparables.length) {
+      html += '<div class="aviso">Los periodos <strong>' + A + "</strong> y <strong>" + B +
+        "</strong> no comparten indicadores con datos en ambos. Compara periodos del mismo origen (p. ej. dos informes de actividad, o dos plantillas de CMI).</div>";
+    } else {
+      var grupos = {};
+      comparables.forEach(function (f) { (grupos[f.grupo] = grupos[f.grupo] || []).push(f); });
+      Object.keys(grupos).forEach(function (g) {
+        html += '<h2 class="sec">' + g + '</h2><table class="cmp"><thead><tr>' +
+          "<th>Indicador</th><th>" + A + "</th><th>" + B + "</th><th>Δ</th><th>Variación</th></tr></thead><tbody>";
+        grupos[g].forEach(function (f) {
+          var d = f.b - f.a, pct = f.a !== 0 ? (d / Math.abs(f.a)) * 100 : null;
+          var plano = Math.abs(d) < 1e-9;
+          var mejora = f.dir === "menor_mejor" ? d < 0 : d > 0;
+          var cls = plano ? "flat" : (mejora ? "mejora" : "empeora");
+          var arrow = plano ? "=" : (d > 0 ? "▲" : "▼");
+          var u = f.uni ? " " + f.uni : "";
+          html += "<tr><td>" + (f.cod ? '<span class="kr-cod">' + f.cod + "</span> " : "") + f.nombre + "</td>" +
+            "<td>" + fmt(f.a, f.a % 1 ? 2 : 0) + u + "</td>" +
+            "<td>" + fmt(f.b, f.b % 1 ? 2 : 0) + u + "</td>" +
+            '<td class="cmp-d ' + cls + '">' + arrow + " " + fmt(Math.abs(d), Math.abs(d) % 1 ? 2 : 0) + "</td>" +
+            '<td class="cmp-d ' + cls + '">' + (pct === null ? "—" : (d > 0 ? "+" : "") + Math.round(pct) + "%") + "</td></tr>";
+        });
+        html += "</tbody></table>";
+      });
+    }
+
+    // Evolución (series con ≥2 puntos en todos los periodos)
+    var evo = "";
+    Object.keys(cods).sort().forEach(function (cod) {
+      var c = cods[cod];
+      var serie = ps.map(function (per) { return valorCMI(per, cod); });
       if (serie.filter(function (x) { return x !== null; }).length < 2) return;
       var meta = numES(c.MetaNum);
-      html += chartBox(c.Codigo + " · " + c.Indicador,
-        estado.periodos[0] + " → " + estado.periodos[estado.periodos.length - 1] +
-        (meta !== null ? "  ·  meta " + fmt(meta, meta % 1 ? 1 : 0) : ""),
-        sparkline(serie, c.Direccion, meta));
+      evo += chartBox(cod + " · " + c.Indicador, ps[0] + " → " + ps[ps.length - 1] +
+        (meta !== null ? " · meta " + fmt(meta, meta % 1 ? 1 : 0) : ""), sparkline(serie, c.Direccion, meta));
     });
-    html += "</div>";
-    // operativos (media DASE)
-    html += '<h2 class="sec">Evolución de los indicadores operativos (media DASE)</h2><div class="tend-grid">';
     (estado.data.operativoCols || []).forEach(function (col) {
-      var serie = estado.periodos.map(function (per) { return mediaOperativa(per, col.clave); });
+      var serie = ps.map(function (per) { return mediaOperativa(per, col.clave); });
       if (serie.filter(function (x) { return x !== null; }).length < 2) return;
-      html += chartBox(col.etiqueta, "media DASE por periodo",
+      evo += chartBox(col.etiqueta + " (media DASE)", "evolución por periodo",
         sparkline(serie, col.direccion, col.metaNum !== undefined ? col.metaNum : null));
     });
-    html += "</div>";
+    if (evo) html += '<h2 class="sec">Evolución por periodo</h2><div class="tend-grid">' + evo + "</div>";
+
     box.innerHTML = html;
+    var sa = el("cmpA"), sb = el("cmpB");
+    if (sa) sa.addEventListener("change", function () { estado.compA = this.value; renderTendencias(); });
+    if (sb) sb.addEventListener("change", function () { estado.compB = this.value; renderTendencias(); });
   }
 
   function chartBox(titulo, sub, svg) {
@@ -871,12 +952,7 @@
     initTema();
     // pestañas (solo las del nav principal, que tienen data-panel)
     Array.prototype.forEach.call(document.querySelectorAll(".tabs .tab"), function (t) {
-      t.addEventListener("click", function () {
-        document.querySelectorAll(".tabs .tab").forEach(function (x) { x.classList.remove("activa"); });
-        document.querySelectorAll(".panel").forEach(function (x) { x.classList.remove("activa"); });
-        t.classList.add("activa");
-        el(t.getAttribute("data-panel")).classList.add("activa");
-      });
+      t.addEventListener("click", function () { activarTab(t.getAttribute("data-panel")); });
     });
     el("periodoSel").addEventListener("change", function () { estado.periodoSel = this.value; render(); });
     var dSel = el("disenoSel");

@@ -247,6 +247,28 @@ table.heat td:first-child,table.heat th:first-child{text-align:left;background:v
 table.heat td.verde{background:var(--verde)} table.heat td.ambar{background:var(--ambar)} table.heat td.rojo{background:var(--rojo)}
 table.heat td.verde,table.heat td.ambar,table.heat td.rojo{color:#fff;font-weight:600}
 table.heat td.neutro,table.heat td.nodata{background:var(--gris-bg);color:var(--gris)}
+/* Comparativa (periodo A vs B) */
+.cmp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:.9rem;color:var(--gris)}
+.cmp-bar select{font:inherit;padding:7px 11px;border-radius:8px;border:1px solid var(--gris-borde);background:var(--superficie);color:var(--texto);font-weight:700}
+table.cmp{width:100%;border-collapse:collapse;background:var(--superficie);border-radius:var(--radio);overflow:hidden;box-shadow:var(--sombra);font-size:.86rem;margin-bottom:10px}
+table.cmp th,table.cmp td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--gris-borde);font-variant-numeric:tabular-nums}
+table.cmp th:first-child,table.cmp td:first-child{text-align:left}
+table.cmp thead th{background:var(--azul);color:#fff;font-weight:600;white-space:nowrap}
+table.cmp tbody tr:hover{background:var(--hover)}
+table.cmp .kr-cod{margin-right:4px}
+.cmp-d.mejora{color:var(--verde);font-weight:700}
+.cmp-d.empeora{color:var(--rojo);font-weight:700}
+.cmp-d.flat{color:var(--gris)}
+/* Ejecutivo: objetivos OKR compactos + heatmap con scroll */
+.ejec-obj{margin-bottom:13px}
+.eo-top{display:flex;justify-content:space-between;gap:8px;font-size:.87rem;margin-bottom:5px}
+.eo-name{font-weight:600}
+.eo-pct{font-weight:800}
+.eo-pct.verde{color:var(--verde)} .eo-pct.ambar{color:var(--ambar)} .eo-pct.rojo{color:var(--rojo)} .eo-pct.neutro{color:var(--gris)}
+.eo-bar{height:10px;background:var(--gris-bg);border:1px solid var(--gris-borde);border-radius:6px;overflow:hidden}
+.eo-fill{height:100%;border-radius:6px;transition:width .3s}
+.eo-fill.verde{background:var(--verde)} .eo-fill.ambar{background:var(--ambar)} .eo-fill.rojo{background:var(--rojo)} .eo-fill.neutro{background:var(--gris)}
+.heat-wrap{overflow-x:auto}
 /* Vista ejecutiva */
 .ejec-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:6px}
 .ejec-head h2{margin:0;color:var(--azul-texto);font-size:1.15rem}
