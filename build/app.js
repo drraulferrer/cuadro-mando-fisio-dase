@@ -387,12 +387,100 @@
     return max <= 0 ? 1 : max * 1.05;
   }
 
+  // ===== Fichas explicativas por indicador del CMI =====
+  // Qué mide · de dónde sale el dato · cómo mejorarlo. Contenido de referencia
+  // (no depende de los datos cargados): el CMI estratégico es un conjunto fijo.
+  var FICHAS = {
+    "P1-01": { nom: "Demora de valoración inicial",
+      mide: "Días que pasan desde que el paciente es derivado hasta su primera valoración por fisioterapia. Mide la accesibilidad de entrada al servicio.",
+      fuente: "Agenda de citación (AP-Madrid): diferencia entre la fecha de derivación y la fecha de primera valoración; se promedia por unidad y para el conjunto de la DASE.",
+      mejora: ["Optimizar las agendas y reservar huecos de primeras valoraciones", "Triaje previo para priorizar los casos urgentes", "Reasignar demanda hacia unidades con menor demora", "Revisar absentismo y citas duplicadas que bloquean huecos"] },
+    "P1-02": { nom: "Demora de inicio de tratamiento",
+      mide: "Días entre la valoración inicial y la primera sesión de tratamiento. Mide la rapidez en empezar a tratar tras valorar.",
+      fuente: "Agenda: fecha de valoración frente a fecha de primera sesión; media por unidad y DASE.",
+      mejora: ["Reservar huecos de inicio próximos a la valoración", "Protocolos de inicio precoz en patología frecuente", "Sesiones grupales para descargar la agenda individual", "Controlar la lista de espera de tratamiento por unidad"] },
+    "P1-03": { nom: "Presión asistencial y frecuentación",
+      mide: "Carga asistencial por fisioterapeuta y número medio de sesiones por paciente (frecuentación), así como la dispersión entre unidades.",
+      fuente: "Actividad registrada (sesiones y pacientes) dividida por la plantilla equivalente; comparación entre unidades.",
+      mejora: ["Estandarizar el número de sesiones por proceso (alta por objetivos)", "Reequilibrar plantilla y derivación entre unidades", "Promover el alta proactiva al cumplir objetivos", "Evitar la frecuentación clínicamente innecesaria"] },
+    "P1-04": { nom: "Actividad grupal (Educación para la Salud)",
+      mide: "Porcentaje de unidades que realizan actividad grupal de Educación para la Salud (escuela de espalda, ejercicio terapéutico, etc.).",
+      fuente: "Registro de actividad grupal por unidad (memoria de actividad / agenda de grupos).",
+      mejora: ["Implantar al menos un grupo de EpS por unidad", "Formar a los profesionales en metodología grupal", "Agendar sesiones grupales periódicas", "Registrar sistemáticamente la actividad realizada"] },
+    "P2-01": { nom: "Consecución de objetivos al alta",
+      mide: "Porcentaje de pacientes que alcanzan los objetivos terapéuticos pactados en el momento del alta. Mide la efectividad clínica.",
+      fuente: "Registro clínico al alta: objetivos cumplidos sobre el total de altas.",
+      mejora: ["Fijar objetivos SMART y funcionales al inicio del tratamiento", "Reevaluación intermedia para ajustar el plan", "Homogeneizar los criterios de alta entre profesionales", "Formación en establecimiento de objetivos"] },
+    "P2-02": { nom: "Mejora del dolor al alta",
+      mide: "Porcentaje de pacientes con mejoría clínicamente relevante del dolor (p. ej. escala EVA) entre el inicio y el alta.",
+      fuente: "Escala de dolor (EVA) registrada al inicio y al alta; se considera la diferencia respecto al umbral de relevancia clínica.",
+      mejora: ["Medir el dolor de forma sistemática al inicio y al alta", "Planes de tratamiento basados en la evidencia", "Educación en dolor y autocuidados", "Seguimiento específico de los pacientes que no responden"] },
+    "P2-03": { nom: "Cumplimiento de cartera (506/414)",
+      mide: "Grado de implantación de las técnicas y procesos de la cartera de servicios de fisioterapia de AP en cada unidad.",
+      fuente: "Autoevaluación de cartera por unidad (técnicas disponibles sobre el catálogo); códigos 506/414.",
+      mejora: ["Dotar de recursos y formación las técnicas ausentes", "Homogeneizar la cartera entre unidades", "Plan de implantación priorizado por impacto", "Revisión periódica del cumplimiento por unidad"] },
+    "P2-04": { nom: "Población atendida",
+      mide: "Porcentaje de la población de referencia que recibe atención de fisioterapia. Mide la cobertura del servicio.",
+      fuente: "Pacientes atendidos sobre la población asignada (tarjeta sanitaria, TIS).",
+      mejora: ["Mejorar la accesibilidad reduciendo las demoras", "Asegurar la derivación adecuada de patología subsidiaria", "Captación activa en procesos prevalentes", "Reducir barreras de acceso al servicio"] },
+    "P3-01": { nom: "Satisfacción durante la lista de espera",
+      mide: "Experiencia y satisfacción del paciente mientras espera ser atendido, especialmente tras el triaje.",
+      fuente: "Encuesta de satisfacción específica durante la espera (pendiente de implantar de forma sistemática).",
+      mejora: ["Implantar la encuesta de satisfacción en espera", "Información proactiva al paciente sobre su proceso", "Triaje con recomendaciones y autocuidados durante la espera", "Acortar los tiempos de espera percibidos"] },
+    "P3-02": { nom: "Triaje en la primera quincena",
+      mide: "Porcentaje de derivaciones a las que se realiza triaje (cribado y priorización) dentro de los primeros 15 días.",
+      fuente: "Registro de triaje frente a la fecha de derivación.",
+      mejora: ["Establecer un circuito de triaje sistemático", "Agenda dedicada al triaje de derivaciones", "Criterios de priorización claros y compartidos", "Formación del equipo en cribado"] },
+    "P4-01": { nom: "Formación en líneas estratégicas",
+      mide: "Porcentaje de profesionales formados en las líneas estratégicas del servicio (dolor, ejercicio terapéutico, EpS, etc.).",
+      fuente: "Registro de formación: profesionales formados sobre el total de la plantilla.",
+      mejora: ["Plan de formación anual alineado con las líneas estratégicas", "Sesiones de formación interna entre unidades", "Facilitar el acceso a cursos acreditados", "Vincular la formación a los objetivos del equipo"] },
+    "P4-02": { nom: "Coordinación: circuitos de derivación",
+      mide: "Número de unidades con un circuito de derivación normalizado con otros niveles y servicios (objetivo: las 19 unidades).",
+      fuente: "Documentación de circuitos de derivación por unidad.",
+      mejora: ["Protocolizar los circuitos con Atención Primaria y Hospitalaria", "Normalizar los criterios de derivación", "Acuerdos con los servicios implicados", "Desplegar el circuito a las 19 unidades"] }
+  };
+
+  function infoBtn(cod) {
+    return FICHAS[cod]
+      ? '<button class="info-btn no-print" type="button" data-ficha="' + cod +
+        '" title="¿Qué mide y cómo mejorarlo?" aria-label="Qué mide el indicador ' + cod + '">ⓘ</button>'
+      : "";
+  }
+
+  function abrirFicha(cod) {
+    var f = FICHAS[cod], modal = el("fichaModal");
+    if (!f || !modal) return;
+    var reg = cmiDe(estado.periodoSel).filter(function (c) { return c.Codigo === cod; })[0];
+    var e = reg ? estadoCMI(reg, numES(reg.Valor)) : "neutro";
+    var objs = estado.data.objetivos || {};
+    var valTxt = (reg && numES(reg.Valor) !== null)
+      ? fmt(numES(reg.Valor), numES(reg.Valor) % 1 ? 2 : 0) + " " + (reg.Unidad || "") : "s/d";
+    el("fichaCod").textContent = cod + (reg && reg.Objetivo ? " · " + reg.Objetivo + " " + (objs[reg.Objetivo] || "") : "");
+    el("fichaTit").textContent = f.nom;
+    el("fichaEstado").innerHTML =
+      '<span class="pill ' + e + '"><span class="dot"></span>' + estadoLabel(e) + "</span>" +
+      '<span class="ficha-val">Valor actual: <strong>' + valTxt + "</strong></span>" +
+      (reg && reg.Meta ? '<span class="ficha-val">Meta: <strong>' + reg.Meta + "</strong></span>" : "");
+    el("fichaMide").textContent = f.mide;
+    el("fichaFuente").textContent = f.fuente;
+    el("fichaMejora").innerHTML = f.mejora.map(function (m) { return "<li>" + m + "</li>"; }).join("");
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    var x = el("fichaX"); if (x) x.focus();
+  }
+
+  function cerrarFicha() {
+    var modal = el("fichaModal");
+    if (modal && !modal.hidden) { modal.hidden = true; document.body.style.overflow = ""; }
+  }
+
   function bulletBar(c) {
     var v = numES(c.Valor), e = estadoCMI(c, v), meta = numES(c.MetaNum), dom = dominio(c);
     var pct = v === null ? 0 : Math.max(0, Math.min(100, (v / dom) * 100));
     var metaPct = meta === null ? null : Math.max(0, Math.min(100, (meta / dom) * 100));
     return '<div class="barra ' + e + '">' +
-      '<div class="blab"><span class="bcod">' + c.Codigo + '</span>' + c.Indicador + '</div>' +
+      '<div class="blab"><span class="bcod">' + c.Codigo + '</span>' + infoBtn(c.Codigo) + ' ' + c.Indicador + '</div>' +
       '<div class="btrack">' +
         '<div class="bfill ' + e + '" style="width:' + pct.toFixed(1) + '%"></div>' +
         (metaPct === null ? "" : '<div class="bmeta" style="left:' + metaPct.toFixed(1) + '%" title="meta ' + (c.Meta || "") + '"></div>') +
@@ -430,7 +518,7 @@
     var svg = '<svg viewBox="0 0 200 108" role="img">' +
       '<path class="g-bg" d="' + dPath + '"/>' + valArc + metaTick + '</svg>';
     return '<div class="gauge ' + e + '">' +
-      '<div class="gcod">' + c.Codigo + ' <span class="badge ' + e + '">' + estadoLabel(e) + '</span></div>' +
+      '<div class="gcod">' + c.Codigo + infoBtn(c.Codigo) + ' <span class="badge ' + e + '">' + estadoLabel(e) + '</span></div>' +
       '<div class="gnom">' + c.Indicador + '</div>' + svg +
       '<div class="gval">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + ' <span class="uni">' + (c.Unidad || "") + '</span></div>' +
       '<div class="gmetatxt">Meta: ' + (c.Meta || "—") + '</div>' +
@@ -470,7 +558,7 @@
     var spark = serie.filter(function (x) { return x !== null; }).length >= 2 ? sparkline(serie, c.Direccion, meta) : "";
     return '<div class="ind ' + e + '">' +
       '<div class="sem"></div>' +
-      '<div class="ind-top"><span class="cod">' + c.Codigo + "</span>" +
+      '<div class="ind-top"><span class="cod">' + c.Codigo + "</span>" + infoBtn(c.Codigo) +
       '<span class="pill ' + e + '"><span class="dot"></span>' + estadoLabel(e) + "</span></div>" +
       '<div class="nom">' + c.Indicador + "</div>" +
       '<div class="valwrap"><span class="val">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) +
@@ -527,7 +615,7 @@
           ? '<div class="kr-cual">Cualitativo · ' + estadoLabel(e) + "</div>"
           : '<div class="kr-bar"><div class="kr-fill ' + e + '" style="width:' + pct.toFixed(0) + '%"></div></div>';
         html += '<div class="okr-kr">' +
-          '<div class="kr-head"><span class="kr-cod">' + c.Codigo + '</span>' +
+          '<div class="kr-head"><span class="kr-cod">' + c.Codigo + '</span>' + infoBtn(c.Codigo) +
           '<span class="kr-name">' + c.Indicador + '</span>' +
           '<span class="kr-pct ' + e + '">' + (pct === null ? "—" : Math.round(pct) + "%") + "</span></div>" +
           cuerpo +
@@ -1198,6 +1286,14 @@
     dz.addEventListener("drop", function (e) {
       if (e.dataTransfer && e.dataTransfer.files) Array.prototype.forEach.call(e.dataTransfer.files, manejarFichero);
     });
+
+    // Fichas explicativas del CMI: abrir/cerrar el modal por delegación de eventos
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-ficha]") : null;
+      if (btn) { e.preventDefault(); e.stopPropagation(); abrirFicha(btn.getAttribute("data-ficha")); return; }
+      if (e.target.closest && e.target.closest("[data-close]")) cerrarFicha();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") cerrarFicha(); });
 
     render();
   }

@@ -372,6 +372,30 @@ button:focus-visible,select:focus-visible,a:focus-visible,
 .card .delta.up-bad,.card .delta.down-bad{color:var(--rojo)}
 .card .delta.flat{color:var(--gris)}
 
+/* — Ficha explicativa por indicador (qué mide · fuente · cómo mejorar) — */
+.info-btn{font:inherit;line-height:1;border:none;background:none;cursor:pointer;color:var(--gris);
+  font-size:.95rem;padding:0 2px;margin-left:4px;border-radius:50%;opacity:.65;vertical-align:baseline;transition:opacity .15s,color .15s}
+.info-btn:hover{opacity:1;color:var(--azul-texto)}
+.ficha-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.ficha-modal[hidden]{display:none}
+.ficha-backdrop{position:absolute;inset:0;background:rgba(13,30,36,.55)}
+.ficha-card{position:relative;background:var(--superficie);color:var(--texto);border-radius:14px;
+  box-shadow:0 24px 60px rgba(0,0,0,.35);max-width:520px;width:100%;max-height:85vh;overflow:auto;padding:22px 24px;
+  border-top:5px solid var(--acento);animation:fichaIn .2s ease}
+@keyframes fichaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ficha-x{position:absolute;top:12px;right:12px;border:none;background:none;font-size:1.05rem;color:var(--gris);
+  cursor:pointer;line-height:1;padding:5px;border-radius:6px}
+.ficha-x:hover{color:var(--rojo)}
+.ficha-cod{font-size:.72rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;padding-right:24px}
+.ficha-tit{font-size:1.2rem;color:var(--azul-texto);margin:3px 0 12px;line-height:1.2;padding-right:24px}
+.ficha-estado{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;margin-bottom:14px;font-size:.82rem;color:var(--gris)}
+.ficha-estado .ficha-val strong{color:var(--texto)}
+.ficha-sec{margin-top:13px}
+.ficha-sec h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--gris);margin:0 0 4px}
+.ficha-sec p{margin:0;font-size:.92rem;line-height:1.5}
+.ficha-sec ul{margin:0;padding-left:18px;font-size:.92rem;line-height:1.5}
+.ficha-sec li{margin-bottom:4px}
+
 @media print{
   header.app{background:var(--azul)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .controls,.tabs,.tend-controls,.dropzone-hint,#fileInput,.no-print{display:none!important}
