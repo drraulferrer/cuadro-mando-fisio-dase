@@ -111,6 +111,18 @@ async function run() {
 
   // ---- plantillas de presentación ----
   function setSel(id, val) { const s = d.getElementById(id); s.value = val; s.dispatchEvent(new w.Event("change")); }
+  setSel("disenoSel", "okr");
+  chk(d.querySelectorAll("#cmiBox .okr-obj").length === 4, "Vista OKR: se esperaban 4 objetivos, hay " + d.querySelectorAll("#cmiBox .okr-obj").length);
+  chk(d.querySelectorAll("#cmiBox .okr-kr").length === 12, "Vista OKR: se esperaban 12 resultados clave, hay " + d.querySelectorAll("#cmiBox .okr-kr").length);
+  chk(d.querySelectorAll("#cmiBox .okr-obj .okr-ring").length >= 3, "Vista OKR: faltan anillos de progreso por objetivo");
+  chk(/%/.test((d.querySelector("#cmiBox .kr-pct") || {}).textContent || ""), "Vista OKR: los KR deben mostrar % de cumplimiento");
+  // cumplimiento P2-02 (94 vs >=90) debe ser 100%
+  (function(){
+    var kr = Array.from(d.querySelectorAll("#cmiBox .okr-kr")).find(k => k.querySelector(".kr-cod").textContent === "P2-02");
+    chk(kr && /100\s*%/.test(kr.querySelector(".kr-pct").textContent), "Vista OKR: P2-02 (94 vs ≥90) debería ser 100% de cumplimiento");
+  })();
+  setSel("disenoSel", "tarjetas");
+
   setSel("disenoSel", "barras");
   chk(d.querySelectorAll("#cmiBox .barra").length === 12, "Presentación barras: se esperaban 12 barras, hay " + d.querySelectorAll("#cmiBox .barra").length);
   chk(d.querySelectorAll("#cmiBox .barra .bmeta").length >= 8, "Presentación barras: faltan marcadores de meta");

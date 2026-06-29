@@ -409,12 +409,71 @@
     return porObj;
   }
 
+  // ---------- vista OKR ----------
+  // % de cumplimiento de la meta (respeta la dirección), acotado 0-100
+  function cumplimientoKR(c) {
+    var v = numES(c.Valor), meta = numES(c.MetaNum);
+    if (v === null || meta === null) return null;
+    var pct;
+    if (c.Direccion === "menor_mejor") pct = v <= 0 ? 100 : (meta / v) * 100;
+    else pct = meta <= 0 ? (v > 0 ? 100 : 0) : (v / meta) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }
+  function bandaObjetivo(pct) { return pct >= 90 ? "verde" : pct >= 60 ? "ambar" : "rojo"; }
+
+  function donut(pct, e) {
+    var r = 26, circ = 2 * Math.PI * r, off = circ * (1 - pct / 100);
+    return '<svg class="okr-ring" viewBox="0 0 64 64" role="img">' +
+      '<circle class="okr-ring-bg" cx="32" cy="32" r="' + r + '"/>' +
+      '<circle class="okr-ring-val ' + e + '" cx="32" cy="32" r="' + r +
+      '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) +
+      '" transform="rotate(-90 32 32)"/>' +
+      '<text x="32" y="38" text-anchor="middle" class="okr-ring-txt">' + Math.round(pct) + "%</text></svg>";
+  }
+
+  function renderOKR(porObj, objetivos) {
+    var orden = Object.keys(porObj).sort();
+    var html = "";
+    orden.forEach(function (obj) {
+      var krs = porObj[obj];
+      var pcts = krs.map(cumplimientoKR).filter(function (x) { return x !== null; });
+      var avg = pcts.length ? pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length : null;
+      var eo = avg === null ? "neutro" : bandaObjetivo(avg);
+      html += '<div class="okr-obj ' + eo + '"><div class="okr-obj-head">' +
+        (avg === null ? '<div class="okr-ring-wrap neutro"><span>s/d</span></div>' : donut(avg, eo)) +
+        '<div class="okr-obj-meta"><div class="okr-obj-title">' + obj + " · " + (objetivos[obj] || "") + "</div>" +
+        '<div class="okr-obj-sub">' + krs.length + " resultados clave" +
+        (avg !== null ? " · " + Math.round(avg) + "% cumplimiento medio" : "") + "</div></div></div>" +
+        '<div class="okr-krs">';
+      krs.forEach(function (c) {
+        var v = numES(c.Valor), e = estadoCMI(c, v), pct = cumplimientoKR(c);
+        var valTxt = (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + (c.Unidad ? " " + c.Unidad : "");
+        var cuerpo = pct === null
+          ? '<div class="kr-cual">Cualitativo · ' + estadoLabel(e) + "</div>"
+          : '<div class="kr-bar"><div class="kr-fill ' + e + '" style="width:' + pct.toFixed(0) + '%"></div></div>';
+        html += '<div class="okr-kr">' +
+          '<div class="kr-head"><span class="kr-cod">' + c.Codigo + '</span>' +
+          '<span class="kr-name">' + c.Indicador + '</span>' +
+          '<span class="kr-pct ' + e + '">' + (pct === null ? "—" : Math.round(pct) + "%") + "</span></div>" +
+          cuerpo +
+          '<div class="kr-foot"><span>Actual: <strong>' + valTxt + "</strong></span>" +
+          "<span>Meta: " + (c.Meta || "—") + "</span></div></div>";
+      });
+      html += "</div>";
+    });
+    return html;
+  }
+
   function renderCMI() {
     var prev = periodoAnterior(estado.periodoSel);
     var objetivos = estado.data.objetivos || {};
     var porObj = gruposCMI();
     var orden = Object.keys(porObj).sort();
     var modo = estado.disenoCMI;
+    if (modo === "okr") {
+      el("cmiBox").innerHTML = orden.length ? renderOKR(porObj, objetivos) : '<p class="hint">Sin datos de CMI para este periodo.</p>';
+      return;
+    }
     var html = "";
     orden.forEach(function (obj) {
       html += '<div class="' + (modo === "barras" ? "barras-grupo" : "obj-grupo") + '">' +

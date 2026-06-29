@@ -202,6 +202,31 @@ footer.app{max-width:1240px;margin:10px auto 30px;padding:0 22px;font-size:.74re
 .g-val{fill:none;stroke-width:14;stroke-linecap:round}
 .g-val.verde{stroke:var(--verde)} .g-val.ambar{stroke:var(--ambar)} .g-val.rojo{stroke:var(--rojo)} .g-val.neutro{stroke:var(--gris)}
 .g-meta{stroke:var(--texto);stroke-width:2}
+/* Vista OKR (objetivos y resultados clave) */
+.okr-obj{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:16px 18px;margin-bottom:16px;border-left:5px solid var(--gris-borde)}
+.okr-obj.verde{border-left-color:var(--verde)} .okr-obj.ambar{border-left-color:var(--ambar)} .okr-obj.rojo{border-left-color:var(--rojo)}
+.okr-obj-head{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+.okr-ring{width:64px;height:64px;flex:0 0 auto}
+.okr-ring-bg{fill:none;stroke:var(--gris-bg);stroke-width:7}
+.okr-ring-val{fill:none;stroke-width:7;stroke-linecap:round}
+.okr-ring-val.verde{stroke:var(--verde)} .okr-ring-val.ambar{stroke:var(--ambar)} .okr-ring-val.rojo{stroke:var(--rojo)} .okr-ring-val.neutro{stroke:var(--gris)}
+.okr-ring-txt{font-size:15px;font-weight:800;fill:var(--texto)}
+.okr-ring-wrap.neutro{width:64px;height:64px;flex:0 0 auto;border-radius:50%;border:3px dashed var(--gris-borde);display:flex;align-items:center;justify-content:center;color:var(--gris);font-size:.74rem;font-weight:600}
+.okr-obj-title{font-size:1.04rem;font-weight:700;color:var(--azul-texto);line-height:1.2}
+.okr-obj-sub{font-size:.8rem;color:var(--gris);margin-top:3px}
+.okr-krs{display:grid;gap:11px;margin-top:6px}
+.okr-kr{border-top:1px solid var(--gris-borde);padding-top:11px}
+.kr-head{display:flex;align-items:baseline;gap:8px}
+.kr-cod{font-size:.72rem;font-weight:700;color:var(--gris);letter-spacing:.03em;white-space:nowrap}
+.kr-name{font-weight:600;font-size:.93rem;flex:1 1 auto}
+.kr-pct{font-weight:800;font-size:1.05rem;margin-left:auto;white-space:nowrap}
+.kr-pct.verde{color:var(--verde)} .kr-pct.ambar{color:var(--ambar)} .kr-pct.rojo{color:var(--rojo)} .kr-pct.neutro{color:var(--gris)}
+.kr-bar{height:9px;background:var(--gris-bg);border:1px solid var(--gris-borde);border-radius:6px;margin:8px 0 6px;overflow:hidden}
+.kr-fill{height:100%;border-radius:6px;transition:width .3s}
+.kr-fill.verde{background:var(--verde)} .kr-fill.ambar{background:var(--ambar)} .kr-fill.rojo{background:var(--rojo)} .kr-fill.neutro{background:var(--gris)}
+.kr-foot{display:flex;justify-content:space-between;gap:10px;font-size:.78rem;color:var(--gris)}
+.kr-foot strong{color:var(--texto)}
+.kr-cual{font-size:.8rem;color:var(--gris);margin:7px 0 2px}
 /* Mapa de calor */
 table.heat{width:100%;border-collapse:collapse;font-size:.8rem;background:var(--superficie);border-radius:var(--radio);overflow:hidden;box-shadow:var(--sombra)}
 table.heat th,table.heat td{padding:7px 8px;text-align:center;border:1px solid var(--superficie)}
@@ -254,6 +279,7 @@ table.heat td.neutro,table.heat td.nodata{background:var(--gris-bg);color:var(--
     <div class="grp"><label for="disenoSel">Diseño CMI</label>
       <select id="disenoSel" aria-label="Diseño de los indicadores CMI">
         <option value="tarjetas">Tarjetas</option>
+        <option value="okr">OKR (objetivos y KR)</option>
         <option value="barras">Barras con meta</option>
         <option value="medidores">Medidores</option>
       </select></div>
@@ -1301,12 +1327,71 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     return porObj;
   }
 
+  // ---------- vista OKR ----------
+  // % de cumplimiento de la meta (respeta la dirección), acotado 0-100
+  function cumplimientoKR(c) {
+    var v = numES(c.Valor), meta = numES(c.MetaNum);
+    if (v === null || meta === null) return null;
+    var pct;
+    if (c.Direccion === "menor_mejor") pct = v <= 0 ? 100 : (meta / v) * 100;
+    else pct = meta <= 0 ? (v > 0 ? 100 : 0) : (v / meta) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }
+  function bandaObjetivo(pct) { return pct >= 90 ? "verde" : pct >= 60 ? "ambar" : "rojo"; }
+
+  function donut(pct, e) {
+    var r = 26, circ = 2 * Math.PI * r, off = circ * (1 - pct / 100);
+    return '<svg class="okr-ring" viewBox="0 0 64 64" role="img">' +
+      '<circle class="okr-ring-bg" cx="32" cy="32" r="' + r + '"/>' +
+      '<circle class="okr-ring-val ' + e + '" cx="32" cy="32" r="' + r +
+      '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) +
+      '" transform="rotate(-90 32 32)"/>' +
+      '<text x="32" y="38" text-anchor="middle" class="okr-ring-txt">' + Math.round(pct) + "%</text></svg>";
+  }
+
+  function renderOKR(porObj, objetivos) {
+    var orden = Object.keys(porObj).sort();
+    var html = "";
+    orden.forEach(function (obj) {
+      var krs = porObj[obj];
+      var pcts = krs.map(cumplimientoKR).filter(function (x) { return x !== null; });
+      var avg = pcts.length ? pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length : null;
+      var eo = avg === null ? "neutro" : bandaObjetivo(avg);
+      html += '<div class="okr-obj ' + eo + '"><div class="okr-obj-head">' +
+        (avg === null ? '<div class="okr-ring-wrap neutro"><span>s/d</span></div>' : donut(avg, eo)) +
+        '<div class="okr-obj-meta"><div class="okr-obj-title">' + obj + " · " + (objetivos[obj] || "") + "</div>" +
+        '<div class="okr-obj-sub">' + krs.length + " resultados clave" +
+        (avg !== null ? " · " + Math.round(avg) + "% cumplimiento medio" : "") + "</div></div></div>" +
+        '<div class="okr-krs">';
+      krs.forEach(function (c) {
+        var v = numES(c.Valor), e = estadoCMI(c, v), pct = cumplimientoKR(c);
+        var valTxt = (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + (c.Unidad ? " " + c.Unidad : "");
+        var cuerpo = pct === null
+          ? '<div class="kr-cual">Cualitativo · ' + estadoLabel(e) + "</div>"
+          : '<div class="kr-bar"><div class="kr-fill ' + e + '" style="width:' + pct.toFixed(0) + '%"></div></div>';
+        html += '<div class="okr-kr">' +
+          '<div class="kr-head"><span class="kr-cod">' + c.Codigo + '</span>' +
+          '<span class="kr-name">' + c.Indicador + '</span>' +
+          '<span class="kr-pct ' + e + '">' + (pct === null ? "—" : Math.round(pct) + "%") + "</span></div>" +
+          cuerpo +
+          '<div class="kr-foot"><span>Actual: <strong>' + valTxt + "</strong></span>" +
+          "<span>Meta: " + (c.Meta || "—") + "</span></div></div>";
+      });
+      html += "</div>";
+    });
+    return html;
+  }
+
   function renderCMI() {
     var prev = periodoAnterior(estado.periodoSel);
     var objetivos = estado.data.objetivos || {};
     var porObj = gruposCMI();
     var orden = Object.keys(porObj).sort();
     var modo = estado.disenoCMI;
+    if (modo === "okr") {
+      el("cmiBox").innerHTML = orden.length ? renderOKR(porObj, objetivos) : '<p class="hint">Sin datos de CMI para este periodo.</p>';
+      return;
+    }
     var html = "";
     orden.forEach(function (obj) {
       html += '<div class="' + (modo === "barras" ? "barras-grupo" : "obj-grupo") + '">' +
