@@ -77,6 +77,17 @@ async function run() {
   chk(estadoDe("P2-04") === "verde", "R6: P2-04 (cualitativo EstadoManual=verde) debería ser verde, es " + estadoDe("P2-04"));
   chk(estadoDe("P3-01") === "rojo", "R6: P3-01 (cualitativo EstadoManual=rojo) debería ser rojo, es " + estadoDe("P3-01"));
 
+  // Rediseño tarjetas: pill de estado legible + barra de progreso a meta
+  chk(d.querySelectorAll("#cmiBox .ind .pill").length === 12, "Tarjetas: cada tarjeta debe tener un pill de estado, hay " + d.querySelectorAll("#cmiBox .ind .pill").length);
+  chk(/En meta|En riesgo|Crítico/.test(d.querySelector("#cmiBox .ind .pill").textContent), "Tarjetas: el pill debe mostrar etiqueta legible (En meta/En riesgo/Crítico)");
+  chk(d.querySelectorAll("#cmiBox .ind .prog .prog-meta").length >= 8, "Tarjetas: faltan barras de progreso con marca de meta");
+  chk(!/>verde<|>ambar<|>rojo</.test(d.getElementById("cmiBox").innerHTML), "Tarjetas: no deben mostrar la palabra cruda del estado (verde/ambar/rojo)");
+
+  // Cabecera rediseñada: marca + chip de estado global
+  chk(!!d.querySelector("header .brand-accent"), "Cabecera: falta la franja de marca");
+  chk(/Servicio Madrileño de Salud/i.test(d.querySelector("header .eyebrow").textContent || ""), "Cabecera: falta el eyebrow institucional");
+  chk(d.querySelectorAll("#estadoGlobal .eg-chip").length === 3, "Cabecera: el chip de estado global debe tener 3 contadores, hay " + d.querySelectorAll("#estadoGlobal .eg-chip").length);
+
   // R9: resumen con conteos. Verde count >=1, rojo count >=1
   const cards = d.querySelectorAll("#resumenCards .card");
   chk(cards.length >= 4, "R9: faltan tarjetas de resumen");

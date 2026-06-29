@@ -178,7 +178,19 @@
     renderOperativa();
     renderTendencias();
     renderEjecutivo();
+    renderEstadoGlobal();
     el("fuente").textContent = estado.data.fuente || "";
+  }
+
+  function renderEstadoGlobal() {
+    var box = el("estadoGlobal");
+    if (!box) return;
+    var c = { verde: 0, ambar: 0, rojo: 0, neutro: 0 };
+    cmiDe(estado.periodoSel).forEach(function (x) { c[estadoCMI(x, numES(x.Valor))]++; });
+    box.innerHTML =
+      '<span class="eg-chip"><span class="dot" style="background:var(--verde)"></span>' + c.verde + " en meta</span>" +
+      '<span class="eg-chip"><span class="dot" style="background:var(--ambar)"></span>' + c.ambar + " en riesgo</span>" +
+      '<span class="eg-chip"><span class="dot" style="background:var(--rojo)"></span>' + c.rojo + " críticos</span>";
   }
 
   function renderEjecutivo() {
@@ -343,29 +355,52 @@
     var svg = '<svg viewBox="0 0 200 108" role="img">' +
       '<path class="g-bg" d="' + dPath + '"/>' + valArc + metaTick + '</svg>';
     return '<div class="gauge ' + e + '">' +
-      '<div class="gcod">' + c.Codigo + ' <span class="badge ' + e + '">' + e + '</span></div>' +
+      '<div class="gcod">' + c.Codigo + ' <span class="badge ' + e + '">' + estadoLabel(e) + '</span></div>' +
       '<div class="gnom">' + c.Indicador + '</div>' + svg +
       '<div class="gval">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) + ' <span class="uni">' + (c.Unidad || "") + '</span></div>' +
       '<div class="gmetatxt">Meta: ' + (c.Meta || "—") + '</div>' +
       '</div>';
   }
 
+  function estadoLabel(e) {
+    return e === "verde" ? "En meta" : e === "ambar" ? "En riesgo" : e === "rojo" ? "Crítico" : "Cualitativo";
+  }
+
+  function partidaTxt(c) {
+    var pp = numES(c.PuntoPartida);
+    return pp === null ? (c.PuntoPartida || "—") : fmt(pp, pp % 1 ? 2 : 0);
+  }
+
   function tarjetaCMI(c, prev) {
-    var v = numES(c.Valor), e = estadoCMI(c, v), meta = numES(c.MetaNum);
+    var v = numES(c.Valor), e = estadoCMI(c, v), meta = numES(c.MetaNum), dom = dominio(c);
     var serie = estado.periodos.map(function (per) { return valorCMI(per, c.Codigo); });
     var vAnt = prev ? valorCMI(prev, c.Codigo) : null;
-    var t = tendencia(v, vAnt, c.Direccion);
+    var t = (vAnt !== null && v !== null) ? tendencia(v, vAnt, c.Direccion) : null;
+    var trendHTML = t ? '<span class="trend ' + t.cls + '" title="vs ' + prev + '">' + t.txt + "</span>" : "";
+
+    var info;
+    if (meta !== null && v !== null) {
+      var pct = Math.max(0, Math.min(100, (v / dom) * 100));
+      var metaPct = Math.max(0, Math.min(100, (meta / dom) * 100));
+      info = '<div class="prog"><div class="prog-track">' +
+        '<div class="prog-fill ' + e + '" style="width:' + pct.toFixed(1) + '%"></div>' +
+        '<div class="prog-meta" style="left:' + metaPct.toFixed(1) + '%" title="meta"></div></div>' +
+        '<div class="prog-labels"><span class="meta-d">Meta: ' + (c.Meta || "—") + "</span>" +
+        '<span class="part-d">Partida ' + partidaTxt(c) + "</span></div></div>";
+    } else {
+      info = '<div class="meta-cual"><strong>Meta:</strong> ' + (c.Meta || "—") +
+        (numES(c.PuntoPartida) !== null ? " · Partida: " + partidaTxt(c) : "") + "</div>";
+    }
+
+    var spark = serie.filter(function (x) { return x !== null; }).length >= 2 ? sparkline(serie, c.Direccion, meta) : "";
     return '<div class="ind ' + e + '">' +
       '<div class="sem"></div>' +
-      '<div class="cod">' + c.Codigo + ' <span class="badge ' + e + '">' + e + '</span></div>' +
-      '<div class="nom">' + c.Indicador + '</div>' +
+      '<div class="ind-top"><span class="cod">' + c.Codigo + "</span>" +
+      '<span class="pill ' + e + '"><span class="dot"></span>' + estadoLabel(e) + "</span></div>" +
+      '<div class="nom">' + c.Indicador + "</div>" +
       '<div class="valwrap"><span class="val">' + (v === null ? "—" : fmt(v, v % 1 ? 2 : 0)) +
-      '</span><span class="uni">' + (c.Unidad || "") + '</span>' +
-      '<span class="trend ' + t.cls + '" title="vs ' + (prev || "—") + '">' + t.txt + '</span></div>' +
-      sparkline(serie, c.Direccion, meta) +
-      '<div class="meta">Partida: ' + (numES(c.PuntoPartida) === null ? (c.PuntoPartida || "—") : fmt(numES(c.PuntoPartida), 2)) +
-      ' · Meta: ' + (c.Meta || "—") + '</div>' +
-      '</div>';
+      '</span><span class="uni">' + (c.Unidad || "") + "</span>" + trendHTML + "</div>" +
+      info + spark + "</div>";
   }
 
   function gruposCMI() {
