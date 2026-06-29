@@ -74,10 +74,28 @@ header.app .sub{font-size:.8rem;opacity:.92;margin-top:3px}
 .eg-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);
   border:1px solid rgba(255,255,255,.28);padding:6px 11px;border-radius:20px;font-size:.8rem;font-weight:600;white-space:nowrap}
 .eg-chip .dot{width:10px;height:10px;border-radius:50%}
-.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 24px;background:rgba(0,0,0,.13)}
-.toolbar label{font-size:.76rem;opacity:.95;font-weight:600}
-.toolbar .grp{display:flex;align-items:center;gap:7px}
-.toolbar .sep{width:1px;height:24px;background:rgba(255,255,255,.25)}
+/* Botón único de configuración + panel desplegable */
+.config-wrap{position:relative;margin-left:auto}
+.config-btn{font:inherit;font-weight:600;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.14);
+  color:#fff;padding:9px 15px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.config-btn:hover{background:rgba(255,255,255,.26)}
+.config-btn .chev{font-size:.7rem;opacity:.85;transition:transform .15s}
+.config-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.config-panel{position:absolute;right:0;top:calc(100% + 8px);width:308px;max-width:88vw;
+  background:var(--superficie);color:var(--texto);border:1px solid var(--gris-borde);border-radius:12px;
+  box-shadow:0 12px 34px rgba(0,0,0,.24);padding:15px;z-index:60}
+.config-panel[hidden]{display:none}
+.cfg-title{font-size:.72rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px}
+.cfg-row{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.cfg-row label{font-size:.73rem;font-weight:700;color:var(--gris)}
+.config-panel select{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--gris-borde);
+  background:var(--superficie);color:var(--texto);width:100%}
+.cfg-sep{height:1px;background:var(--gris-borde);margin:4px 0 12px}
+.cfg-actions{display:flex;flex-direction:column;gap:8px}
+.cfg-btn{font:inherit;font-weight:600;padding:9px 12px;border-radius:8px;border:1px solid var(--gris-borde);
+  background:var(--superficie);color:var(--azul-texto);cursor:pointer;text-align:center}
+.cfg-btn:hover{background:var(--hover)}
+.cfg-btn.primary{background:var(--acento);color:#fff;border-color:var(--acento)}
 #periodoSel{font-weight:700}
 select,button.btn{font:inherit;border-radius:8px;border:1px solid rgba(255,255,255,.4);
   background:rgba(255,255,255,.12);color:#fff;padding:7px 12px;cursor:pointer}
@@ -271,31 +289,38 @@ table.heat td.neutro,table.heat td.nodata{background:var(--gris-bg);color:var(--
       <div class="sub">Dirección Asistencial Sureste (DASE) · Calidad y evaluación (CMI)</div>
     </div>
     <div class="estado-global no-print" id="estadoGlobal"></div>
-  </div>
-  <div class="toolbar no-print">
-    <div class="grp"><label for="periodoSel">Periodo</label>
-      <select id="periodoSel" aria-label="Periodo"></select></div>
-    <div class="sep"></div>
-    <div class="grp"><label for="disenoSel">Diseño CMI</label>
-      <select id="disenoSel" aria-label="Diseño de los indicadores CMI">
-        <option value="tarjetas">Tarjetas</option>
-        <option value="okr">OKR (objetivos y KR)</option>
-        <option value="barras">Barras con meta</option>
-        <option value="medidores">Medidores</option>
-      </select></div>
-    <div class="grp"><label for="temaSel">Tema</label>
-      <select id="temaSel" aria-label="Tema (estética)">
-        <option value="">SaludMadrid (oficial)</option>
-        <option value="verde">Verde salud</option>
-        <option value="corporativo">Corporativo sobrio</option>
-        <option value="burdeos">Burdeos institucional</option>
-        <option value="oscuro">Oscuro</option>
-        <option value="contraste">Alto contraste</option>
-      </select></div>
-    <div class="sep"></div>
-    <button class="btn primary" id="btnCargar">⭧ Cargar datos</button>
-    <button class="btn" id="btnImprimir">🖶 Imprimir / PDF</button>
-    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.pdf" multiple style="display:none">
+    <div class="config-wrap no-print">
+      <button class="config-btn" id="btnConfig" aria-haspopup="true" aria-expanded="false" aria-controls="configPanel">
+        ⚙ Configuración <span class="chev">▾</span>
+      </button>
+      <div class="config-panel" id="configPanel" role="menu" hidden>
+        <p class="cfg-title">Configuración del cuadro de mando</p>
+        <div class="cfg-row"><label for="periodoSel">Periodo</label>
+          <select id="periodoSel" aria-label="Periodo"></select></div>
+        <div class="cfg-row"><label for="disenoSel">Diseño del CMI</label>
+          <select id="disenoSel" aria-label="Diseño de los indicadores CMI">
+            <option value="tarjetas">Tarjetas</option>
+            <option value="okr">OKR (objetivos y KR)</option>
+            <option value="barras">Barras con meta</option>
+            <option value="medidores">Medidores</option>
+          </select></div>
+        <div class="cfg-row"><label for="temaSel">Tema</label>
+          <select id="temaSel" aria-label="Tema (estética)">
+            <option value="">SaludMadrid (oficial)</option>
+            <option value="verde">Verde salud</option>
+            <option value="corporativo">Corporativo sobrio</option>
+            <option value="burdeos">Burdeos institucional</option>
+            <option value="oscuro">Oscuro</option>
+            <option value="contraste">Alto contraste</option>
+          </select></div>
+        <div class="cfg-sep"></div>
+        <div class="cfg-actions">
+          <button class="cfg-btn primary" id="btnCargar">⭧ Cargar datos (Excel · CSV · PDF)</button>
+          <button class="cfg-btn" id="btnImprimir">🖶 Imprimir / Exportar PDF</button>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.pdf" multiple style="display:none">
+      </div>
+    </div>
   </div>
 </header>
 
@@ -1806,6 +1831,19 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
         renderOperativa();
       });
     });
+    // botón único de configuración (panel desplegable)
+    var btnCfg = el("btnConfig"), panel = el("configPanel");
+    function abrirCfg(abrir) {
+      panel.hidden = !abrir;
+      btnCfg.setAttribute("aria-expanded", abrir ? "true" : "false");
+    }
+    if (btnCfg && panel) {
+      btnCfg.addEventListener("click", function (e) { e.stopPropagation(); abrirCfg(panel.hidden); });
+      panel.addEventListener("click", function (e) { e.stopPropagation(); });
+      document.addEventListener("click", function () { if (!panel.hidden) abrirCfg(false); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) abrirCfg(false); });
+    }
+
     el("btnCargar").addEventListener("click", function () { el("fileInput").click(); });
     el("fileInput").addEventListener("change", function () {
       Array.prototype.forEach.call(this.files, manejarFichero);

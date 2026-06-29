@@ -88,6 +88,18 @@ async function run() {
   chk(/Servicio Madrileño de Salud/i.test(d.querySelector("header .eyebrow").textContent || ""), "Cabecera: falta el eyebrow institucional");
   chk(d.querySelectorAll("#estadoGlobal .eg-chip").length === 3, "Cabecera: el chip de estado global debe tener 3 contadores, hay " + d.querySelectorAll("#estadoGlobal .eg-chip").length);
 
+  // Botón único de configuración: agrupa todas las opciones, cabecera limpia
+  chk(!d.querySelector("header .toolbar"), "Config: ya no debe existir la barra de herramientas suelta");
+  chk(!!d.getElementById("btnConfig") && !!d.getElementById("configPanel"), "Config: faltan el botón o el panel de configuración");
+  chk(d.getElementById("configPanel").hidden === true, "Config: el panel debe empezar oculto");
+  ["periodoSel", "disenoSel", "temaSel", "btnCargar", "btnImprimir", "fileInput"].forEach(function (id) {
+    chk(d.getElementById("configPanel").contains(d.getElementById(id)), "Config: el control #" + id + " debe estar dentro del panel");
+  });
+  d.getElementById("btnConfig").dispatchEvent(new w.Event("click", { bubbles: true }));
+  chk(d.getElementById("configPanel").hidden === false, "Config: al pulsar el botón el panel debe abrirse");
+  d.body.dispatchEvent(new w.Event("click", { bubbles: true }));
+  chk(d.getElementById("configPanel").hidden === true, "Config: al pulsar fuera el panel debe cerrarse");
+
   // R9: resumen con conteos. Verde count >=1, rojo count >=1
   const cards = d.querySelectorAll("#resumenCards .card");
   chk(cards.length >= 4, "R9: faltan tarjetas de resumen");

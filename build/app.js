@@ -888,6 +888,19 @@
         renderOperativa();
       });
     });
+    // botón único de configuración (panel desplegable)
+    var btnCfg = el("btnConfig"), panel = el("configPanel");
+    function abrirCfg(abrir) {
+      panel.hidden = !abrir;
+      btnCfg.setAttribute("aria-expanded", abrir ? "true" : "false");
+    }
+    if (btnCfg && panel) {
+      btnCfg.addEventListener("click", function (e) { e.stopPropagation(); abrirCfg(panel.hidden); });
+      panel.addEventListener("click", function (e) { e.stopPropagation(); });
+      document.addEventListener("click", function () { if (!panel.hidden) abrirCfg(false); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) abrirCfg(false); });
+    }
+
     el("btnCargar").addEventListener("click", function () { el("fileInput").click(); });
     el("fileInput").addEventListener("change", function () {
       Array.prototype.forEach.call(this.files, manejarFichero);

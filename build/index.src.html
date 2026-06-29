@@ -16,31 +16,38 @@
       <div class="sub">Dirección Asistencial Sureste (DASE) · Calidad y evaluación (CMI)</div>
     </div>
     <div class="estado-global no-print" id="estadoGlobal"></div>
-  </div>
-  <div class="toolbar no-print">
-    <div class="grp"><label for="periodoSel">Periodo</label>
-      <select id="periodoSel" aria-label="Periodo"></select></div>
-    <div class="sep"></div>
-    <div class="grp"><label for="disenoSel">Diseño CMI</label>
-      <select id="disenoSel" aria-label="Diseño de los indicadores CMI">
-        <option value="tarjetas">Tarjetas</option>
-        <option value="okr">OKR (objetivos y KR)</option>
-        <option value="barras">Barras con meta</option>
-        <option value="medidores">Medidores</option>
-      </select></div>
-    <div class="grp"><label for="temaSel">Tema</label>
-      <select id="temaSel" aria-label="Tema (estética)">
-        <option value="">SaludMadrid (oficial)</option>
-        <option value="verde">Verde salud</option>
-        <option value="corporativo">Corporativo sobrio</option>
-        <option value="burdeos">Burdeos institucional</option>
-        <option value="oscuro">Oscuro</option>
-        <option value="contraste">Alto contraste</option>
-      </select></div>
-    <div class="sep"></div>
-    <button class="btn primary" id="btnCargar">⭧ Cargar datos</button>
-    <button class="btn" id="btnImprimir">🖶 Imprimir / PDF</button>
-    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.pdf" multiple style="display:none">
+    <div class="config-wrap no-print">
+      <button class="config-btn" id="btnConfig" aria-haspopup="true" aria-expanded="false" aria-controls="configPanel">
+        ⚙ Configuración <span class="chev">▾</span>
+      </button>
+      <div class="config-panel" id="configPanel" role="menu" hidden>
+        <p class="cfg-title">Configuración del cuadro de mando</p>
+        <div class="cfg-row"><label for="periodoSel">Periodo</label>
+          <select id="periodoSel" aria-label="Periodo"></select></div>
+        <div class="cfg-row"><label for="disenoSel">Diseño del CMI</label>
+          <select id="disenoSel" aria-label="Diseño de los indicadores CMI">
+            <option value="tarjetas">Tarjetas</option>
+            <option value="okr">OKR (objetivos y KR)</option>
+            <option value="barras">Barras con meta</option>
+            <option value="medidores">Medidores</option>
+          </select></div>
+        <div class="cfg-row"><label for="temaSel">Tema</label>
+          <select id="temaSel" aria-label="Tema (estética)">
+            <option value="">SaludMadrid (oficial)</option>
+            <option value="verde">Verde salud</option>
+            <option value="corporativo">Corporativo sobrio</option>
+            <option value="burdeos">Burdeos institucional</option>
+            <option value="oscuro">Oscuro</option>
+            <option value="contraste">Alto contraste</option>
+          </select></div>
+        <div class="cfg-sep"></div>
+        <div class="cfg-actions">
+          <button class="cfg-btn primary" id="btnCargar">⭧ Cargar datos (Excel · CSV · PDF)</button>
+          <button class="cfg-btn" id="btnImprimir">🖶 Imprimir / Exportar PDF</button>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.pdf" multiple style="display:none">
+      </div>
+    </div>
   </div>
 </header>
 
