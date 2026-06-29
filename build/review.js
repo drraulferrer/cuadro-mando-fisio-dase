@@ -19,7 +19,7 @@ function nuevaDOM() {
 function listo(dom) {
   return new Promise(res => {
     const d = dom.window.document;
-    if (d.querySelector("#cmiBox .ind")) return res();
+    if (d.querySelector("#cmiBox .ind, #cmiBox .okr-obj")) return res();
     dom.window.addEventListener("DOMContentLoaded", () => setTimeout(res, 0));
     setTimeout(res, 500);
   });
@@ -46,9 +46,17 @@ async function run() {
   const dom = nuevaDOM();
   await listo(dom);
   const w = dom.window, d = w.document;
+  const setSel = (id, val) => { const s = d.getElementById(id); s.value = val; s.dispatchEvent(new w.Event("change")); };
 
   // R1: SheetJS embebido y disponible
   chk(typeof w.XLSX !== "undefined", "R1: XLSX (SheetJS) no está embebido/disponible");
+
+  // El CMI arranca por defecto en formato OKR
+  chk(d.getElementById("disenoSel").value === "okr", "Defecto: el CMI debe abrirse en formato OKR");
+  chk(d.querySelectorAll("#cmiBox .okr-obj").length === 4, "Defecto: OKR debe mostrar 4 objetivos al inicio");
+
+  // Las comprobaciones de tarjetas requieren ese formato
+  setSel("disenoSel", "tarjetas");
 
   // R10/R4: datos precargados -> CMI con 12 indicadores
   const indCards = d.querySelectorAll("#cmiBox .ind");
@@ -124,7 +132,6 @@ async function run() {
   chk(Math.abs(parseFloat(valTxt) - mediaCartera) < 0.05, "P2-03: media cartera esperada " + mediaCartera.toFixed(2) + ", mostrada " + valTxt);
 
   // ---- plantillas de presentación ----
-  function setSel(id, val) { const s = d.getElementById(id); s.value = val; s.dispatchEvent(new w.Event("change")); }
   setSel("disenoSel", "okr");
   chk(d.querySelectorAll("#cmiBox .okr-obj").length === 4, "Vista OKR: se esperaban 4 objetivos, hay " + d.querySelectorAll("#cmiBox .okr-obj").length);
   chk(d.querySelectorAll("#cmiBox .okr-kr").length === 12, "Vista OKR: se esperaban 12 resultados clave, hay " + d.querySelectorAll("#cmiBox .okr-kr").length);
@@ -194,8 +201,8 @@ async function run() {
   await cargarCSV(dom2, fs.readFileSync(path.join(ROOT,"test","malo.csv"),"utf8"), "malo.csv");
   const a2 = dom2.window.document.getElementById("avisoCarga");
   chk(/error/.test(a2.className) || /no se reconoce|faltan/i.test(a2.textContent), "E1/E2: fichero malformado debería dar error claro");
-  // y los datos previos se conservan (sigue habiendo 12 CMI)
-  chk(dom2.window.document.querySelectorAll("#cmiBox .ind").length === 12, "E1: tras fichero malo deben conservarse los datos previos");
+  // y los datos previos se conservan (sigue habiendo 12 KR del CMI; por defecto OKR)
+  chk(dom2.window.document.querySelectorAll("#cmiBox .okr-kr").length === 12, "E1: tras fichero malo deben conservarse los datos previos");
 
   // ---- E7: fichero vacío ----
   const dom3 = nuevaDOM();

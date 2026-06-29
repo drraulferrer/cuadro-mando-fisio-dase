@@ -18,7 +18,7 @@
     periodoSel: null,
     sortCol: "Unidad",
     sortDir: 1,
-    disenoCMI: "tarjetas",   // tarjetas | barras | medidores | okr
+    disenoCMI: "okr",        // okr | tarjetas | barras | medidores (por defecto OKR)
     vistaUnidad: "tabla",    // tabla | heatmap
     compA: null, compB: null, // periodos a comparar en la pestaña Comparativa
   };
