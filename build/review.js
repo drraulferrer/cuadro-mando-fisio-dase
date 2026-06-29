@@ -174,6 +174,20 @@ async function run() {
   chk(d.querySelectorAll("#ejecBox .ejec-obj .eo-fill").length === 4, "Ejecutivo: faltan barras de progreso por objetivo");
   chk(d.querySelectorAll("#ejecBox .heat-wrap table.heat tbody tr").length === 19, "Ejecutivo: el mapa de calor debería tener 19 unidades en un contenedor con scroll");
 
+  // ---- OKR por unidad (prioridades) ----
+  chk(!!d.querySelector('.tabs .tab[data-panel="panelOKRUni"]'), "OKR unidad: falta la pestaña 'OKR por unidad'");
+  chk(d.querySelectorAll("#okrUniSel option").length === 19, "OKR unidad: el selector debe tener 19 unidades, hay " + d.querySelectorAll("#okrUniSel option").length);
+  chk(d.querySelectorAll("#okrUniBox .okruni-matriz tbody tr").length === 19, "OKR unidad: la matriz debe tener 19 unidades");
+  chk(d.querySelectorAll("#okrUniBox .okruni-area .okr-kr").length >= 3, "OKR unidad: faltan resultados clave por área");
+  // seleccionar Villablanca: peor demora -> debe tener prioridad alta y OKR manual (datos precargados)
+  (function(){
+    const s = d.getElementById("okrUniSel");
+    s.value = "Villablanca"; s.dispatchEvent(new w.Event("change"));
+    chk(d.querySelectorAll("#okrUniBox .prio").length >= 1, "OKR unidad: Villablanca debería tener prioridades");
+    chk(!!d.querySelector("#okrUniBox .prio-tag.alta"), "OKR unidad: Villablanca debería tener una prioridad alta (demora 79)");
+    chk(/OKR definidos/i.test(d.getElementById("okrUniBox").textContent), "OKR unidad: deben mostrarse los OKR a medida precargados (Villablanca)");
+  })();
+
   // ---- carga CSV 2 periodos -> R7/R8 tendencias ----
   const csv2 = fs.readFileSync(path.join(ROOT, "test", "CMI_2periodos.csv"), "utf8");
   await cargarCSV(dom, csv2, "CMI_2periodos.csv");

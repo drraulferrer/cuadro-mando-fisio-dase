@@ -253,6 +253,27 @@ table.heat td:first-child,table.heat th:first-child{text-align:left;background:v
 table.heat td.verde{background:var(--verde)} table.heat td.ambar{background:var(--ambar)} table.heat td.rojo{background:var(--rojo)}
 table.heat td.verde,table.heat td.ambar,table.heat td.rojo{color:#fff;font-weight:600}
 table.heat td.neutro,table.heat td.nodata{background:var(--gris-bg);color:var(--gris)}
+/* OKR por unidad */
+.okruni-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.okruni-bar label{font-size:.78rem;font-weight:700;color:var(--gris)}
+.okruni-bar select{font:inherit;padding:8px 11px;border-radius:8px;border:1px solid var(--gris-borde);background:var(--superficie);color:var(--texto);font-weight:700}
+.okruni-head{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:14px 18px;border-left:5px solid var(--acento);margin-bottom:6px}
+.okruni-name{font-size:1.2rem;font-weight:800;color:var(--azul-texto)}
+.okruni-sec{font-size:1rem;color:var(--azul-texto);margin:20px 0 10px}
+.okruni-area{margin-bottom:14px}
+.prio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.prio{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:13px 15px;border-left:5px solid var(--gris-borde)}
+.prio.rojo{border-left-color:var(--rojo)} .prio.ambar{border-left-color:var(--ambar)}
+.prio-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.prio-tag{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:20px}
+.prio-tag.alta{background:var(--rojo-bg);color:var(--rojo)} .prio-tag.media{background:var(--ambar-bg);color:var(--ambar)}
+.prio-n{font-size:.8rem;font-weight:800;color:var(--gris)}
+.prio-name{font-weight:600;font-size:.95rem;margin-bottom:4px}
+.prio-vals{font-size:.84rem;margin-bottom:8px}
+.prio-act{font-weight:800;font-size:1.1rem}
+.okruni-matriz .okruni-row{cursor:pointer}
+.okruni-matriz .okruni-row.sel td:first-child{box-shadow:inset 4px 0 0 var(--acento);font-weight:800}
+.okruni-matriz tbody tr:hover td{filter:brightness(.96)}
 /* Comparativa (periodo A vs B) */
 .cmp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:.9rem;color:var(--gris)}
 .cmp-bar select{font:inherit;padding:7px 11px;border-radius:8px;border:1px solid var(--gris-borde);background:var(--superficie);color:var(--texto);font-weight:700}
@@ -356,6 +377,7 @@ table.cmp .kr-cod{margin-right:4px}
     <button class="tab activa" data-panel="panelResumen">Resumen</button>
     <button class="tab" data-panel="panelCMI">CMI estratégico</button>
     <button class="tab" data-panel="panelOperativa">Por unidad</button>
+    <button class="tab" data-panel="panelOKRUni">OKR por unidad</button>
     <button class="tab" data-panel="panelTendencias">Comparativa</button>
     <button class="tab" data-panel="panelEjecutivo">Ejecutivo</button>
   </div>
@@ -390,6 +412,15 @@ table.cmp .kr-cod{margin-right:4px}
       <span><span class="dot rojo"></span> lejos de meta</span>
     </div>
     <table class="uni" id="uniTabla"></table>
+  </section>
+
+  <section id="panelOKRUni" class="panel">
+    <div class="okruni-bar no-print">
+      <label for="okrUniSel">Unidad</label>
+      <select id="okrUniSel" aria-label="Unidad para el OKR"></select>
+      <span class="hint">Prioridades calculadas por brecha a meta (críticos primero). Puedes definir OKR a medida cargando una hoja <strong>OKR_Unidades</strong>.</span>
+    </div>
+    <div id="okrUniBox"></div>
   </section>
 
   <section id="panelTendencias" class="panel">
@@ -961,6 +992,41 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       "Periodo": "Dic-2025"
     }
   ],
+  "okrUnidades": [
+    {
+      "Periodo": "Dic-2025",
+      "Unidad": "Villablanca",
+      "Codigo": "16014010",
+      "Objetivo": "Recuperar la accesibilidad",
+      "KR": "Demora de valoración inicial",
+      "Valor": 79.15,
+      "Meta": 35,
+      "Direccion": "menor_mejor",
+      "Prioridad": "alta"
+    },
+    {
+      "Periodo": "Dic-2025",
+      "Unidad": "Villablanca",
+      "Codigo": "16014010",
+      "Objetivo": "Recuperar la accesibilidad",
+      "KR": "% de población atendida",
+      "Valor": 1.82,
+      "Meta": 2.82,
+      "Direccion": "mayor_mejor",
+      "Prioridad": "media"
+    },
+    {
+      "Periodo": "Dic-2025",
+      "Unidad": "Ensanche de Vallecas",
+      "Codigo": "16014210",
+      "Objetivo": "Mejorar el cumplimiento de cartera",
+      "KR": "Cumplimiento de cartera (506/414)",
+      "Valor": 48.1,
+      "Meta": 74.5,
+      "Direccion": "mayor_mejor",
+      "Prioridad": "alta"
+    }
+  ],
   "fuente": "Proyecto Técnico Fisioterapia DASE Sureste (Tablas 19-22, 29-30). Línea base Dic-2025."
 };</script>
 <script>/* Cuadro de Mando — Fisioterapia AP DASE Sureste
@@ -986,6 +1052,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     disenoCMI: "okr",        // okr | tarjetas | barras | medidores (por defecto OKR)
     vistaUnidad: "tabla",    // tabla | heatmap
     compA: null, compB: null, // periodos a comparar en la pestaña Comparativa
+    unidadOKR: null,          // unidad seleccionada en "OKR por unidad"
   };
 
   // ---------- utilidades ----------
@@ -1144,6 +1211,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     renderOperativa();
     renderTendencias();
     renderEjecutivo();
+    renderOKRUnidad();
     renderEstadoGlobal();
     // La pestaña Comparativa solo aparece con ≥2 periodos cargados
     var tabComp = document.querySelector('.tabs .tab[data-panel="panelTendencias"]');
@@ -1562,6 +1630,164 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     });
   }
 
+  // ---------- OKR por unidad (prioridades) ----------
+  var AREAS_UNI = [
+    { area: "Accesibilidad y demoras", claves: ["PctAtendida", "DemoraVI", "DemoraTto", "PresionMes"] },
+    { area: "Efectividad clínica", claves: ["ObjAltaPct", "DolorBajaPct"] },
+    { area: "Cartera de servicios", claves: ["CarteraPct"] },
+    { area: "Actividad", claves: ["PendientesVI", "SesionesIndiv", "ConsultasVI"] },
+  ];
+  function colConfig(clave) { return (estado.data.operativoCols || []).filter(function (c) { return c.clave === clave; })[0]; }
+  function refMedia(periodo) { var m = {}; (estado.data.operativoCols || []).forEach(function (c) { m[c.clave] = mediaOperativa(periodo, c.clave); }); return m; }
+  function refValor(col) { return (col.tipo === "meta" && col.metaNum != null) ? col.metaNum : null; }
+  function estadoUniCelda(col, v, medias) {
+    return col.tipo === "relativo" ? estadoRelativo(v, medias[col.clave], col.direccion) : estadoMeta(v, col.metaNum, col.direccion);
+  }
+  function cumplimientoUni(col, v, mean) {
+    if (v === null) return null;
+    var ref = (col.tipo === "meta" && col.metaNum != null) ? col.metaNum : mean;
+    if (ref === null || ref === 0) return null;
+    var pct = col.direccion === "menor_mejor" ? (v <= 0 ? 100 : ref / v * 100) : (v / ref * 100);
+    return Math.max(0, Math.min(100, pct));
+  }
+  function deficitUni(col, v, mean) {
+    if (v === null) return 0;
+    var ref = (col.tipo === "meta" && col.metaNum != null) ? col.metaNum : mean;
+    if (ref === null || ref === 0) return 0;
+    var def = col.direccion === "menor_mejor" ? (v - ref) / Math.abs(ref) : (ref - v) / Math.abs(ref);
+    return Math.max(0, def);
+  }
+  function objetivoTxt(col, medias) {
+    var refv = refValor(col);
+    if (refv !== null) return (col.direccion === "menor_mejor" ? "≤ " : "≥ ") + fmt(refv, refv % 1 ? 1 : 0);
+    return "ref. media DASE " + fmt(medias[col.clave], 1);
+  }
+
+  function renderOKRUnidad() {
+    var box = el("okrUniBox"); if (!box) return;
+    var p = estado.periodoSel;
+    var us = unidadesDe(p);
+    var sel = el("okrUniSel");
+    if (!us.length) {
+      if (sel) sel.innerHTML = "";
+      box.innerHTML = '<p class="hint">Sin datos por unidad en este periodo.</p>';
+      return;
+    }
+    var nombres = us.map(function (u) { return u.Unidad; }).sort();
+    if (!estado.unidadOKR || nombres.indexOf(estado.unidadOKR) === -1) estado.unidadOKR = nombres[0];
+    if (sel) sel.innerHTML = nombres.map(function (n) { return "<option" + (n === estado.unidadOKR ? " selected" : "") + ">" + n + "</option>"; }).join("");
+
+    var medias = refMedia(p);
+    var u = us.filter(function (x) { return x.Unidad === estado.unidadOKR; })[0] || us[0];
+
+    var inds = [];
+    (estado.data.operativoCols || []).forEach(function (col) {
+      var v = numES(u[col.clave]); if (v === null) return;
+      inds.push({ col: col, v: v, e: estadoUniCelda(col, v, medias), cmp: cumplimientoUni(col, v, medias[col.clave]), def: deficitUni(col, v, medias[col.clave]) });
+    });
+    var prio = inds.filter(function (i) { return i.e === "rojo" || i.e === "ambar"; })
+      .sort(function (a, b) {
+        var sa = (a.e === "rojo" ? 2 : 1) + Math.min(a.def, 1), sb = (b.e === "rojo" ? 2 : 1) + Math.min(b.def, 1);
+        return sb - sa;
+      }).slice(0, 3);
+
+    var html = "";
+    html += '<div class="okruni-head"><div class="okruni-name">' + u.Unidad + "</div>" +
+      '<div class="hint">Código ' + (u.Codigo || "—") + " · Población " + (numES(u.Poblacion) !== null ? fmt(numES(u.Poblacion), 0) : "—") +
+      (u.Fisioterapeutas ? " · " + u.Fisioterapeutas + " fisioterapeutas" : "") + "</div></div>";
+
+    html += '<h3 class="okruni-sec">Prioridades de la unidad</h3>';
+    if (!prio.length) {
+      html += '<div class="aviso ok">Sin brechas relevantes: los indicadores con dato están en meta.</div>';
+    } else {
+      html += '<div class="prio-grid">';
+      prio.forEach(function (i, idx) {
+        var tag = i.e === "rojo" ? "alta" : "media";
+        html += '<div class="prio ' + i.e + '"><div class="prio-top">' +
+          '<span class="prio-tag ' + tag + '">Prioridad ' + tag + "</span><span class=\"prio-n\">#" + (idx + 1) + "</span></div>" +
+          '<div class="prio-name">' + i.col.etiqueta + "</div>" +
+          '<div class="prio-vals"><span class="prio-act">' + fmt(i.v, i.v % 1 ? 2 : 0) + '</span> <span class="hint">→ objetivo ' + objetivoTxt(i.col, medias) + "</span></div>" +
+          '<div class="kr-bar"><div class="kr-fill ' + i.e + '" style="width:' + (i.cmp === null ? 0 : Math.round(i.cmp)) + '%"></div></div></div>';
+      });
+      html += "</div>";
+    }
+
+    html += '<h3 class="okruni-sec">Resultados clave por área</h3>';
+    AREAS_UNI.forEach(function (g) {
+      var rows = inds.filter(function (i) { return g.claves.indexOf(i.col.clave) !== -1; });
+      if (!rows.length) return;
+      html += '<div class="okruni-area"><div class="obj-titulo">' + g.area + "</div>";
+      rows.forEach(function (i) {
+        html += '<div class="okr-kr"><div class="kr-head"><span class="kr-name">' + i.col.etiqueta + "</span>" +
+          '<span class="kr-pct ' + i.e + '">' + (i.cmp === null ? "—" : Math.round(i.cmp) + "%") + "</span></div>" +
+          '<div class="kr-bar"><div class="kr-fill ' + i.e + '" style="width:' + (i.cmp === null ? 0 : Math.round(i.cmp)) + '%"></div></div>' +
+          '<div class="kr-foot"><span>Actual: <strong>' + fmt(i.v, i.v % 1 ? 2 : 0) + "</strong></span><span>Objetivo: " + objetivoTxt(i.col, medias) + "</span></div></div>";
+      });
+      html += "</div>";
+    });
+
+    // OKR definidos manualmente para la unidad (hoja OKR_Unidades), si existen
+    var manual = (estado.data.okrUnidades || []).filter(function (r) {
+      var per = (r.Periodo || "").toString().trim();
+      var okPer = !per || per === p;
+      var okUni = (r.Codigo && String(r.Codigo).trim() === String(u.Codigo).trim()) || (r.Unidad && String(r.Unidad).trim() === u.Unidad);
+      return okPer && okUni;
+    });
+    if (manual.length) {
+      html += '<h3 class="okruni-sec">OKR definidos para la unidad</h3>';
+      var porObj = {};
+      manual.forEach(function (r) { (porObj[r.Objetivo || "Objetivo"] = porObj[r.Objetivo || "Objetivo"] || []).push(r); });
+      Object.keys(porObj).forEach(function (obj) {
+        html += '<div class="okruni-area"><div class="obj-titulo">' + obj + "</div>";
+        porObj[obj].forEach(function (r) {
+          var v = numES(r.Valor), meta = numES(r.Meta), dir = (r.Direccion || "mayor_mejor").trim();
+          var cmp = (v !== null && meta !== null) ? Math.max(0, Math.min(100, dir === "menor_mejor" ? (v <= 0 ? 100 : meta / v * 100) : v / meta * 100)) : null;
+          var e = cmp === null ? "neutro" : (cmp >= 100 ? "verde" : cmp >= 70 ? "ambar" : "rojo");
+          var pr = (r.Prioridad || "").toString().trim();
+          html += '<div class="okr-kr"><div class="kr-head"><span class="kr-name">' + (r.KR || "") +
+            (pr ? ' <span class="prio-tag ' + (pr.toLowerCase() === "alta" ? "alta" : "media") + '">' + pr + "</span>" : "") + "</span>" +
+            '<span class="kr-pct ' + e + '">' + (cmp === null ? "—" : Math.round(cmp) + "%") + "</span></div>" +
+            (cmp === null ? "" : '<div class="kr-bar"><div class="kr-fill ' + e + '" style="width:' + Math.round(cmp) + '%"></div></div>') +
+            '<div class="kr-foot"><span>Actual: <strong>' + (v === null ? (r.Valor || "—") : fmt(v, v % 1 ? 2 : 0)) + "</strong></span><span>Meta: " + (r.Meta || "—") + "</span></div></div>";
+        });
+        html += "</div>";
+      });
+    }
+
+    // matriz comparativa: unidades x áreas (cumplimiento medio del área) + nº prioridades
+    html += '<h3 class="okruni-sec">Comparativa de prioridades por unidad</h3>' +
+      '<p class="hint">Pulsa una unidad para ver su detalle. El color es el cumplimiento medio del área.</p>';
+    html += '<div class="heat-wrap"><table class="heat okruni-matriz"><thead><tr><th>Unidad</th>';
+    AREAS_UNI.forEach(function (g) { html += "<th>" + g.area + "</th>"; });
+    html += "<th>Prioridades</th></tr></thead><tbody>";
+    unidadesOrdenadas(p).forEach(function (uu) {
+      var npri = 0, cells = "";
+      AREAS_UNI.forEach(function (g) {
+        var cs = [];
+        g.claves.forEach(function (cl) {
+          var col = colConfig(cl); if (!col) return;
+          var v = numES(uu[cl]); if (v === null) return;
+          var e = estadoUniCelda(col, v, medias);
+          if (e !== "verde") npri++;
+          var c = cumplimientoUni(col, v, medias[cl]); if (c !== null) cs.push(c);
+        });
+        if (!cs.length) { cells += '<td class="nodata">—</td>'; return; }
+        var avg = cs.reduce(function (a, b) { return a + b; }, 0) / cs.length;
+        var e = avg >= 90 ? "verde" : avg >= 60 ? "ambar" : "rojo";
+        cells += '<td class="' + e + '">' + Math.round(avg) + "%</td>";
+      });
+      var clsSel = uu.Unidad === estado.unidadOKR ? "okruni-row sel" : "okruni-row";
+      html += '<tr class="' + clsSel + '" data-uni="' + uu.Unidad.replace(/"/g, "") + '"><td>' + uu.Unidad + "</td>" + cells + "<td>" + npri + "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+
+    box.innerHTML = html;
+    if (sel) sel.onchange = function () { estado.unidadOKR = this.value; renderOKRUnidad(); };
+    Array.prototype.forEach.call(box.querySelectorAll(".okruni-row"), function (tr) {
+      tr.addEventListener("click", function () { estado.unidadOKR = tr.getAttribute("data-uni"); renderOKRUnidad(); });
+    });
+  }
+
   function arrow(col) {
     if (estado.sortCol !== col) return '<span class="ar">↕</span>';
     return '<span class="ar">' + (estado.sortDir === 1 ? "▲" : "▼") + "</span>";
@@ -1663,7 +1889,8 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
   function detectarYActualizar(filas, nombre) {
     if (!filas || !filas.length) { aviso("El fichero <strong>" + nombre + "</strong> está vacío o sólo tiene cabeceras.", "error"); return false; }
     var cols = Object.keys(filas[0]);
-    var tiene = function (req) { return req.every(function (c) { return cols.indexOf(c) !== -1; }); };
+    var esOKR = cols.indexOf("Objetivo") !== -1 && cols.indexOf("KR") !== -1;
+    if (esOKR) { estado.data.okrUnidades = filas; return "OKR_Unidades"; }
     var esUni = cols.indexOf("Unidad") !== -1 && cols.indexOf("PctAtendida") !== -1 || (cols.indexOf("Unidad") !== -1 && cols.indexOf("DemoraVI") !== -1);
     var esCMI = cols.indexOf("Codigo") !== -1 && cols.indexOf("Valor") !== -1;
     if (esCMI && !esUni) {
@@ -1693,9 +1920,10 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
         if (!nom) return null;
         return XLSX.utils.sheet_to_json(wb.Sheets[nom], { defval: null, raw: true });
       };
-      var uni = leeHoja("Unidades"), cmi = leeHoja("CMI");
+      var uni = leeHoja("Unidades"), cmi = leeHoja("CMI"), okr = leeHoja("OKR_Unidades");
       if (uni) { var r1 = detectarYActualizar(uni, "Unidades"); if (r1) encontrado.push(r1); }
       if (cmi) { var r2 = detectarYActualizar(cmi, "CMI"); if (r2) encontrado.push(r2); }
+      if (okr && okr.length) { estado.data.okrUnidades = okr; encontrado.push("OKR_Unidades"); }
       if (!uni && !cmi) {
         // intentar primera hoja como genérica
         var first = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null, raw: true });

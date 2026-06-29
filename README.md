@@ -35,6 +35,19 @@ Spec: [`../specs/cuadro-mando-fisio-dase.md`](../specs/cuadro-mando-fisio-dase.m
 > Todo el procesamiento ocurre en el navegador. No se envía ningún dato a ningún servidor.
 > El cuadro de mando sólo maneja indicadores agregados; nunca datos de pacientes.
 
+## OKR por unidad (prioridades)
+
+La pestaña **«OKR por unidad»** establece prioridades de mejora para cada centro:
+
+- **Prioridades automáticas**: por cada unidad, el cuadro calcula la brecha de cada indicador a
+  su meta (o a la media DASE) y destaca las 2-3 mayores (críticos primero) como prioridades.
+- **Resultados clave por área** (Accesibilidad, Efectividad, Cartera, Actividad) con % de cumplimiento.
+- **OKR a medida** (opcional, *híbrido*): si cargas una hoja/CSV **OKR_Unidades** con
+  `Periodo, Unidad/Codigo, Objetivo, KR, Valor, Meta, Direccion, Prioridad`, esos OKR definidos
+  a mano se muestran junto a las prioridades automáticas. Plantilla en `plantillas/`.
+- **Matriz comparativa** unidades × áreas (cumplimiento medio + nº de prioridades) para ver de un
+  vistazo dónde actuar; pulsa una unidad para ver su detalle.
+
 ## Formas de presentar los datos (plantillas de presentación)
 
 Además del color (temas), puedes cambiar **cómo** se muestran los datos:

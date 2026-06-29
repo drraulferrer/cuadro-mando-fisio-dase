@@ -506,5 +506,40 @@
       "Periodo": "Dic-2025"
     }
   ],
+  "okrUnidades": [
+    {
+      "Periodo": "Dic-2025",
+      "Unidad": "Villablanca",
+      "Codigo": "16014010",
+      "Objetivo": "Recuperar la accesibilidad",
+      "KR": "Demora de valoración inicial",
+      "Valor": 79.15,
+      "Meta": 35,
+      "Direccion": "menor_mejor",
+      "Prioridad": "alta"
+    },
+    {
+      "Periodo": "Dic-2025",
+      "Unidad": "Villablanca",
+      "Codigo": "16014010",
+      "Objetivo": "Recuperar la accesibilidad",
+      "KR": "% de población atendida",
+      "Valor": 1.82,
+      "Meta": 2.82,
+      "Direccion": "mayor_mejor",
+      "Prioridad": "media"
+    },
+    {
+      "Periodo": "Dic-2025",
+      "Unidad": "Ensanche de Vallecas",
+      "Codigo": "16014210",
+      "Objetivo": "Mejorar el cumplimiento de cartera",
+      "KR": "Cumplimiento de cartera (506/414)",
+      "Valor": 48.1,
+      "Meta": 74.5,
+      "Direccion": "mayor_mejor",
+      "Prioridad": "alta"
+    }
+  ],
   "fuente": "Proyecto Técnico Fisioterapia DASE Sureste (Tablas 19-22, 29-30). Línea base Dic-2025."
 }

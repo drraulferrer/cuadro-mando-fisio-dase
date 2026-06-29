@@ -247,6 +247,27 @@ table.heat td:first-child,table.heat th:first-child{text-align:left;background:v
 table.heat td.verde{background:var(--verde)} table.heat td.ambar{background:var(--ambar)} table.heat td.rojo{background:var(--rojo)}
 table.heat td.verde,table.heat td.ambar,table.heat td.rojo{color:#fff;font-weight:600}
 table.heat td.neutro,table.heat td.nodata{background:var(--gris-bg);color:var(--gris)}
+/* OKR por unidad */
+.okruni-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.okruni-bar label{font-size:.78rem;font-weight:700;color:var(--gris)}
+.okruni-bar select{font:inherit;padding:8px 11px;border-radius:8px;border:1px solid var(--gris-borde);background:var(--superficie);color:var(--texto);font-weight:700}
+.okruni-head{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:14px 18px;border-left:5px solid var(--acento);margin-bottom:6px}
+.okruni-name{font-size:1.2rem;font-weight:800;color:var(--azul-texto)}
+.okruni-sec{font-size:1rem;color:var(--azul-texto);margin:20px 0 10px}
+.okruni-area{margin-bottom:14px}
+.prio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.prio{background:var(--superficie);border-radius:var(--radio);box-shadow:var(--sombra);padding:13px 15px;border-left:5px solid var(--gris-borde)}
+.prio.rojo{border-left-color:var(--rojo)} .prio.ambar{border-left-color:var(--ambar)}
+.prio-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.prio-tag{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:20px}
+.prio-tag.alta{background:var(--rojo-bg);color:var(--rojo)} .prio-tag.media{background:var(--ambar-bg);color:var(--ambar)}
+.prio-n{font-size:.8rem;font-weight:800;color:var(--gris)}
+.prio-name{font-weight:600;font-size:.95rem;margin-bottom:4px}
+.prio-vals{font-size:.84rem;margin-bottom:8px}
+.prio-act{font-weight:800;font-size:1.1rem}
+.okruni-matriz .okruni-row{cursor:pointer}
+.okruni-matriz .okruni-row.sel td:first-child{box-shadow:inset 4px 0 0 var(--acento);font-weight:800}
+.okruni-matriz tbody tr:hover td{filter:brightness(.96)}
 /* Comparativa (periodo A vs B) */
 .cmp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:.9rem;color:var(--gris)}
 .cmp-bar select{font:inherit;padding:7px 11px;border-radius:8px;border:1px solid var(--gris-borde);background:var(--superficie);color:var(--texto);font-weight:700}

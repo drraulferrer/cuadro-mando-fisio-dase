@@ -61,6 +61,7 @@
     <button class="tab activa" data-panel="panelResumen">Resumen</button>
     <button class="tab" data-panel="panelCMI">CMI estratégico</button>
     <button class="tab" data-panel="panelOperativa">Por unidad</button>
+    <button class="tab" data-panel="panelOKRUni">OKR por unidad</button>
     <button class="tab" data-panel="panelTendencias">Comparativa</button>
     <button class="tab" data-panel="panelEjecutivo">Ejecutivo</button>
   </div>
@@ -95,6 +96,15 @@
       <span><span class="dot rojo"></span> lejos de meta</span>
     </div>
     <table class="uni" id="uniTabla"></table>
+  </section>
+
+  <section id="panelOKRUni" class="panel">
+    <div class="okruni-bar no-print">
+      <label for="okrUniSel">Unidad</label>
+      <select id="okrUniSel" aria-label="Unidad para el OKR"></select>
+      <span class="hint">Prioridades calculadas por brecha a meta (críticos primero). Puedes definir OKR a medida cargando una hoja <strong>OKR_Unidades</strong>.</span>
+    </div>
+    <div id="okrUniBox"></div>
   </section>
 
   <section id="panelTendencias" class="panel">

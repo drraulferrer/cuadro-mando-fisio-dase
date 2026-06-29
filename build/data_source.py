@@ -62,6 +62,15 @@ CMI = [
 CMI_COLS = ["Periodo", "Codigo", "Indicador", "Objetivo", "Valor", "Unidad",
             "PuntoPartida", "Meta", "Direccion", "MetaNum", "EstadoManual"]
 
+# --- OKR a medida por unidad (opcional; complementa las prioridades automáticas) ---
+OKR_UNI_COLS = ["Periodo", "Unidad", "Codigo", "Objetivo", "KR", "Valor", "Meta", "Direccion", "Prioridad"]
+# Ejemplos con datos reales Dic-2025 (Tabla 30) para ilustrar el formato.
+OKR_UNIDADES = [
+    ("Dic-2025", "Villablanca", "16014010", "Recuperar la accesibilidad", "Demora de valoración inicial", 79.15, 35, "menor_mejor", "alta"),
+    ("Dic-2025", "Villablanca", "16014010", "Recuperar la accesibilidad", "% de población atendida", 1.82, 2.82, "mayor_mejor", "media"),
+    ("Dic-2025", "Ensanche de Vallecas", "16014210", "Mejorar el cumplimiento de cartera", "Cumplimiento de cartera (506/414)", 48.10, 74.5, "mayor_mejor", "alta"),
+]
+
 OBJETIVOS = {
     "P1": "Accesibilidad y presión asistencial",
     "P2": "Efectividad clínica y cartera",
@@ -115,6 +124,7 @@ def build_data():
         ],
         "unidades": unidades,
         "cmi": cmi,
+        "okrUnidades": [dict(zip(OKR_UNI_COLS, r)) for r in OKR_UNIDADES],
         "fuente": "Proyecto Técnico Fisioterapia DASE Sureste (Tablas 19-22, 29-30). Línea base Dic-2025.",
     }
 
@@ -146,6 +156,12 @@ def write_csv_templates(folder):
         w.writerow(CMI_COLS)
         for r in data["cmi"]:
             w.writerow([_fmt_es(r[c]) for c in CMI_COLS])
+    # OKR_Unidades.csv (OKR a medida por unidad)
+    with open(os.path.join(folder, "Plantilla_OKR_Unidades.csv"), "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(OKR_UNI_COLS)
+        for r in OKR_UNIDADES:
+            w.writerow([_fmt_es(v) for v in r])
 
 
 def write_xlsx_template(path):
@@ -167,6 +183,11 @@ def write_xlsx_template(path):
     for r in data["cmi"]:
         ws2.append([r[c] for c in CMI_COLS])
 
+    ws_okr = wb.create_sheet("OKR_Unidades")
+    ws_okr.append(OKR_UNI_COLS)
+    for r in OKR_UNIDADES:
+        ws_okr.append(list(r))
+
     # hoja de instrucciones
     ws3 = wb.create_sheet("LÉEME")
     instr = [
@@ -186,11 +207,16 @@ def write_xlsx_template(path):
         ["Direccion: 'menor_mejor' (p. ej. demoras) o 'mayor_mejor' (p. ej. % al alta)."],
         ["MetaNum: meta numérica para el semáforo (vacío si la meta es cualitativa)."],
         ["EstadoManual: verde/ambar/rojo para indicadores cualitativos (vacío si se calcula solo)."],
+        [""],
+        ["Hoja OKR_Unidades (opcional) — OKR a medida por unidad. Complementa las prioridades automáticas."],
+        [", ".join(OKR_UNI_COLS)],
+        ["Una fila por Key Result. Agrupa varios KR bajo el mismo 'Objetivo' y 'Unidad' (o 'Codigo')."],
+        ["Prioridad: alta/media (opcional). Si dejas esta hoja vacía, el cuadro calcula las prioridades solo."],
     ]
     for r in instr:
         ws3.append(r)
 
-    for sheet in (ws, ws2):
+    for sheet in (ws, ws2, ws_okr):
         for cell in sheet[1]:
             cell.fill = hdr_fill
             cell.font = hdr_font
