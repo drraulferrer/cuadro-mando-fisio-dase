@@ -123,8 +123,27 @@ main{max-width:1240px;margin:0 auto;padding:26px 28px 40px}
 #resumenCards .card{flex:1 1 170px;border:none;border-left:1px solid var(--gris-borde);border-radius:0;box-shadow:none;padding:16px 20px}
 #resumenCards .card:first-child{border-left:none}
 #resumenCards .card .v{font-size:1.85rem;margin-top:5px}
-/* Medias DASE: KPI con cifra protagonista (tabular) */
-#resumenMedias .card .v{font-size:1.75rem}
+/* ===== Overview BI (pestaña Resumen, estilo Power BI institucional) ===== */
+/* Fila de KPI grandes: la cifra manda (como los ejemplos) */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px;margin-bottom:22px}
+#resumenMedias .card .v{font-size:2.55rem;font-weight:700;margin-top:8px;letter-spacing:-.025em;line-height:1}
+#resumenMedias .card .det{margin-top:9px}
+/* Rejilla de gráficos: donut de situación + barras de objetivos, lado a lado */
+.ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch}
+.ov-grid .hero-estado{margin-bottom:0}
+.ov-panel{background:var(--superficie);border:1px solid var(--gris-borde);border-radius:var(--radio);box-shadow:var(--sombra);padding:18px 20px}
+.ov-title{font-size:.9rem;font-weight:650;color:var(--texto);margin:0 0 16px;letter-spacing:-.01em}
+.ov-bars{display:flex;flex-direction:column}
+.ovbar-row{display:grid;grid-template-columns:minmax(110px,1.3fr) 2fr auto;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--gris-borde)}
+.ovbar-row:last-child{border-bottom:none}
+.ovbar-lab{font-size:.85rem;line-height:1.25}
+.ovbar-cod{font-weight:700;color:var(--gris);font-size:.73rem;margin-right:2px}
+.ovbar-track{height:16px;background:var(--gris-bg);border:1px solid var(--gris-borde);border-radius:8px;overflow:hidden}
+.ovbar-fill{height:100%;border-radius:8px 0 0 8px;transition:width .5s cubic-bezier(.22,1,.36,1)}
+.ovbar-fill.verde{background:var(--verde)} .ovbar-fill.ambar{background:var(--ambar)} .ovbar-fill.rojo{background:var(--rojo)} .ovbar-fill.neutro{background:var(--gris)}
+.ovbar-val{font-weight:800;font-size:1rem;font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.ovbar-val.verde{color:var(--verde)} .ovbar-val.ambar{color:var(--ambar)} .ovbar-val.rojo{color:var(--rojo)} .ovbar-val.neutro{color:var(--gris)}
+@media (max-width:760px){.ov-grid{grid-template-columns:1fr}}
 
 h2.sec{font-size:1.02rem;color:var(--texto);font-weight:650;margin:32px 0 16px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;padding-bottom:10px;border-bottom:1px solid var(--gris-borde)}
 .obj-grupo{margin-bottom:20px}

@@ -183,6 +183,7 @@
     renderOKRUnidad();
     renderEstadoGlobal();
     renderHero();
+    renderOverviewObjetivos();
     // La pestaña Comparativa solo aparece con ≥2 periodos cargados
     var tabComp = document.querySelector('.tabs .tab[data-panel="panelTendencias"]');
     if (tabComp) {
@@ -245,6 +246,27 @@
           '<span class="hero-count rojo"><span class="ico">✕</span><span class="n">' + c.rojo + '</span> críticos</span>' +
         '</div>' +
       '</div>';
+  }
+
+  // Overview: barras horizontales de cumplimiento medio por objetivo estratégico (estilo BI)
+  function renderOverviewObjetivos() {
+    var box = el("ovObjetivos");
+    if (!box) return;
+    var porObj = gruposCMI(), orden = Object.keys(porObj).sort(), objetivos = estado.data.objetivos || {};
+    if (!orden.length) { box.innerHTML = '<p class="hint">Sin datos de CMI en este periodo.</p>'; return; }
+    var html = "";
+    orden.forEach(function (obj) {
+      var pcts = porObj[obj].map(cumplimientoKR).filter(function (x) { return x !== null; });
+      var avg = pcts.length ? pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length : null;
+      var e = avg === null ? "neutro" : bandaObjetivo(avg);
+      var pct = avg === null ? 0 : Math.round(avg);
+      html += '<div class="ovbar-row">' +
+        '<div class="ovbar-lab"><span class="ovbar-cod">' + obj + '</span> ' + (objetivos[obj] || "") + '</div>' +
+        '<div class="ovbar-track"><div class="ovbar-fill ' + e + '" style="width:' + pct + '%"></div></div>' +
+        '<div class="ovbar-val ' + e + '">' + (avg === null ? "s/d" : pct + "%") + '</div>' +
+        '</div>';
+    });
+    box.innerHTML = html;
   }
 
   function renderEjecutivo() {
