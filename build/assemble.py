@@ -23,7 +23,9 @@ def main():
     data_source.write_json(os.path.join(HERE, "data.json"))
 
     src = leer(os.path.join(HERE, "index.src.html"))
-    css = leer(os.path.join(HERE, "styles.css"))
+    fonts_path = os.path.join(HERE, "fonts.css")
+    fonts_css = (leer(fonts_path) + "\n") if os.path.exists(fonts_path) else ""
+    css = fonts_css + leer(os.path.join(HERE, "styles.css"))
     app = leer(os.path.join(HERE, "app.js"))
     data = leer(os.path.join(HERE, "data.json"))
     sheetjs = leer(VENDOR) if os.path.exists(VENDOR) else "/* SheetJS no disponible: sólo CSV */"

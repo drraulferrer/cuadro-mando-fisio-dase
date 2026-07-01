@@ -59,15 +59,15 @@ body[data-tema="contraste"]{
   --header-grad:#000; --sombra:0 0 0 1px #000;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:var(--texto);background:var(--gris-bg);line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 header.app{background:var(--header-grad);color:#fff;padding:0;box-shadow:0 1px 0 rgba(0,0,0,.10)}
-.hdr-main{display:flex;align-items:center;gap:18px;padding:18px 28px;flex-wrap:wrap;max-width:1240px;margin:0 auto}
-.brand-accent{width:3px;align-self:stretch;min-height:46px;background:var(--rojo-marca);border-radius:2px}
-.brand-txt{flex:1 1 260px;min-width:0}
-.eyebrow{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;opacity:.82;font-weight:600}
-header.app h1{font-size:1.4rem;margin:4px 0 0;font-weight:700;line-height:1.14;letter-spacing:-.01em;text-wrap:balance}
-header.app .sub{font-size:.8rem;opacity:.9;margin-top:4px}
+.hdr-main{display:flex;align-items:center;gap:20px;padding:22px 28px;flex-wrap:wrap;max-width:1240px;margin:0 auto}
+.brand-accent{width:3px;align-self:stretch;min-height:54px;background:var(--rojo-marca);border-radius:2px}
+.brand-txt{flex:1 1 280px;min-width:0}
+.eyebrow{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;opacity:.8;font-weight:600}
+header.app h1{font-family:"IBM Plex Serif",Georgia,"Times New Roman",serif;font-size:1.6rem;margin:5px 0 0;font-weight:600;line-height:1.14;letter-spacing:-.005em;text-wrap:balance}
+header.app .sub{font-size:.8rem;opacity:.9;margin-top:5px}
 .estado-global{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .eg-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);
   border:1px solid rgba(255,255,255,.28);padding:6px 11px;border-radius:20px;font-size:.8rem;font-weight:600;white-space:nowrap}
@@ -117,8 +117,16 @@ main{max-width:1240px;margin:0 auto;padding:26px 28px 40px}
 .card .v{font-size:2.1rem;font-weight:700;margin-top:7px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.05}
 .card.verde .v{color:var(--verde)} .card.ambar .v{color:var(--ambar)} .card.rojo .v{color:var(--rojo)} .card.azul .v{color:var(--azul-texto)}
 .card .det{font-size:.78rem;color:var(--gris);margin-top:7px}
+/* Resumen: la fila de conteos es una TIRA integrada con divisores (no 4 cajas sueltas) */
+#resumenCards{display:flex;flex-wrap:wrap;gap:0;background:var(--superficie);border:1px solid var(--gris-borde);
+  border-radius:var(--radio);box-shadow:var(--sombra);overflow:hidden;margin-bottom:16px}
+#resumenCards .card{flex:1 1 170px;border:none;border-left:1px solid var(--gris-borde);border-radius:0;box-shadow:none;padding:16px 20px}
+#resumenCards .card:first-child{border-left:none}
+#resumenCards .card .v{font-size:1.85rem;margin-top:5px}
+/* Medias DASE: KPI con cifra protagonista (tabular) */
+#resumenMedias .card .v{font-size:1.75rem}
 
-h2.sec{font-size:1.02rem;color:var(--texto);font-weight:650;margin:30px 0 14px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+h2.sec{font-size:1.02rem;color:var(--texto);font-weight:650;margin:32px 0 16px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;padding-bottom:10px;border-bottom:1px solid var(--gris-borde)}
 .obj-grupo{margin-bottom:20px}
 .obj-titulo{font-size:.9rem;font-weight:650;color:var(--azul-texto);margin:0 0 10px;padding-bottom:6px;border-bottom:1px dashed var(--gris-borde)}
 .ind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
@@ -298,7 +306,7 @@ table.cmp .kr-cod{margin-right:4px}
 .heat-wrap{overflow-x:auto}
 /* Vista ejecutiva */
 .ejec-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:6px}
-.ejec-head h2{margin:0;color:var(--azul-texto);font-size:1.15rem}
+.ejec-head h2{margin:0;color:var(--azul-texto);font-size:1.3rem;font-family:"IBM Plex Serif",Georgia,serif;font-weight:600;letter-spacing:-.005em}
 .ejec-sem{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14px}
 .ejec-sem .pill{padding:6px 12px;border-radius:8px;font-weight:700;font-size:.9rem;color:#fff}
 .ejec-sem .pill.verde{background:var(--verde)} .ejec-sem .pill.ambar{background:var(--ambar)} .ejec-sem .pill.rojo{background:var(--rojo)}
