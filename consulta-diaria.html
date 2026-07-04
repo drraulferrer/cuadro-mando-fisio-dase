@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Consulta Diaria · Fisioterapia</title>
+<style>
+:root{
+  --azul:#0079A8; --azul-claro:#00A3E0; --rojo:#D23B3B;
+  --verde:#2E7D32; --ambar:#B26A00;
+  --texto:#1C2B33; --texto-suave:#5B6B73;
+  --fondo:#F2F5F7; --superficie:#FFFFFF; --borde:#D9E2E7;
+  --radio:10px; --sombra:0 1px 3px rgba(28,43,51,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font:15px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--fondo); color:var(--texto);
+}
+button{font:inherit; cursor:pointer}
+input,select,textarea{font:inherit; color:inherit}
+h1,h2,h3{margin:0; font-weight:650}
+
+/* ---- cabecera ---- */
+header{
+  background:linear-gradient(135deg,#00648C,var(--azul));
+  color:#fff; padding:12px 16px;
+}
+header .fila{display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:1080px; margin:0 auto}
+header h1{font-size:18px; letter-spacing:.2px; flex:1; min-width:200px}
+header h1 small{display:block; font-size:12px; font-weight:400; opacity:.85}
+header input[type=date]{
+  border:1px solid rgba(255,255,255,.4); background:rgba(255,255,255,.12);
+  color:#fff; border-radius:8px; padding:6px 10px;
+}
+header input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)}
+
+nav{
+  background:var(--superficie); border-bottom:1px solid var(--borde);
+  position:sticky; top:0; z-index:20;
+}
+nav .fila{display:flex; max-width:1080px; margin:0 auto; overflow-x:auto}
+nav button{
+  border:0; background:none; padding:12px 16px; color:var(--texto-suave);
+  border-bottom:3px solid transparent; white-space:nowrap; font-weight:550;
+}
+nav button.activa{color:var(--azul); border-bottom-color:var(--azul)}
+nav button:focus-visible{outline:2px solid var(--azul); outline-offset:-2px}
+
+main{max-width:1080px; margin:0 auto; padding:16px 12px 80px}
+section[hidden]{display:none}
+
+/* ---- tarjetas y utilidades ---- */
+.card{background:var(--superficie); border:1px solid var(--borde); border-radius:var(--radio); box-shadow:var(--sombra); padding:14px; margin-bottom:12px}
+.suave{color:var(--texto-suave)}
+.chip{display:inline-block; padding:2px 10px; border-radius:999px; font-size:12.5px; font-weight:600; border:1px solid transparent}
+.chip.azul{background:#E3F4FB; color:var(--azul)}
+.chip.verde{background:#E7F3E8; color:var(--verde)}
+.chip.rojo{background:#FBEAEA; color:var(--rojo)}
+.chip.ambar{background:#FFF3E0; color:var(--ambar)}
+.chip.gris{background:#EEF2F4; color:var(--texto-suave)}
+.btn{
+  border:1px solid var(--borde); background:var(--superficie); color:var(--texto);
+  border-radius:8px; padding:8px 14px; font-weight:550;
+}
+.btn:hover{border-color:var(--azul); color:var(--azul)}
+.btn.primario{background:var(--azul); border-color:var(--azul); color:#fff}
+.btn.primario:hover{background:#00688F; color:#fff}
+.btn.peligro{color:var(--rojo)}
+.btn.peligro:hover{border-color:var(--rojo)}
+.btn.mini{padding:4px 10px; font-size:13px; border-radius:7px}
+.btn:focus-visible{outline:2px solid var(--azul); outline-offset:2px}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.fila-botones{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.grid-resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px}
+.kpi{background:var(--superficie); border:1px solid var(--borde); border-radius:var(--radio); padding:10px 12px; text-align:center}
+.kpi b{display:block; font-size:22px}
+.kpi span{font-size:12.5px; color:var(--texto-suave)}
+
+/* ---- foto del día ---- */
+#fotoDia img{max-width:160px; max-height:120px; border-radius:8px; border:1px solid var(--borde); cursor:zoom-in; display:block}
+.zona-foto{display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap}
+
+/* ---- tarjeta de paciente del día ---- */
+.pac{border-left:4px solid var(--borde)}
+.pac.viene{border-left-color:var(--verde)}
+.pac.noviene{border-left-color:var(--rojo)}
+.pac-cab{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.pac-cab .nombre{font-size:16.5px; font-weight:650; flex:1; min-width:140px}
+.pac-cab .nombre a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--texto-suave)}
+.pac-cab input[type=time]{border:1px solid var(--borde); border-radius:7px; padding:3px 6px; width:92px}
+.seg{display:inline-flex; border:1px solid var(--borde); border-radius:8px; overflow:hidden}
+.seg button{border:0; background:var(--superficie); padding:6px 12px; color:var(--texto-suave); font-weight:550}
+.seg button+button{border-left:1px solid var(--borde)}
+.seg button.on{color:#fff}
+.seg button.on.v{background:var(--verde)}
+.seg button.on.i{background:var(--ambar)}
+.seg button.on.p{background:var(--rojo)}
+.seg button.on.a{background:var(--azul)}
+.campo{margin-top:12px}
+.campo>label{display:block; font-size:12.5px; font-weight:650; color:var(--texto-suave); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px}
+textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8px; min-height:56px; resize:vertical}
+.check{display:inline-flex; align-items:center; gap:6px; font-size:14px; color:var(--texto-suave); cursor:pointer}
+
+/* ---- tabla de ejercicios ---- */
+.ejercicios{width:100%; border-collapse:collapse; font-size:14px}
+.ejercicios th{font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--texto-suave); text-align:left; padding:2px 6px 4px 0}
+.ejercicios td{padding:3px 6px 3px 0; vertical-align:top}
+.ejercicios input{width:100%; border:1px solid var(--borde); border-radius:7px; padding:6px 8px}
+.ejercicios .num{width:64px}
+.ejercicios .des{width:90px}
+.ejercicios .quitar{width:34px; text-align:center}
+.ejercicios .quitar button{border:0; background:none; color:var(--rojo); font-size:16px; padding:4px}
+@media (max-width:640px){
+  .ejercicios, .ejercicios thead, .ejercicios tbody, .ejercicios tr, .ejercicios td{display:block; width:100%}
+  .ejercicios thead{display:none}
+  .ejercicios td{padding:3px 0}
+  .ejercicios td::before{content:attr(data-l); display:block; font-size:11px; text-transform:uppercase; color:var(--texto-suave)}
+  .ejercicios .num,.ejercicios .des,.ejercicios .quitar{width:100%}
+  .ejercicios tr{border-bottom:1px dashed var(--borde); margin-bottom:8px; padding-bottom:8px}
+}
+
+/* ---- informe del día ---- */
+.bloque-informe{position:relative}
+.bloque-informe pre{
+  white-space:pre-wrap; word-break:break-word; font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:#F7FAFB; border:1px solid var(--borde); border-radius:8px; padding:12px; margin:8px 0 0;
+}
+
+/* ---- pacientes ---- */
+#buscaPac{width:100%; border:1px solid var(--borde); border-radius:8px; padding:10px 12px; margin-bottom:12px}
+.pac-lin{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--borde); cursor:pointer}
+.pac-lin:hover .nombre{color:var(--azul)}
+.pac-lin .nombre{font-weight:600; flex:1}
+.hist-ses{border-left:3px solid var(--borde); padding:8px 0 8px 14px; margin-left:6px}
+.hist-ses+.hist-ses{border-top:0}
+.hist-ses .fecha{font-weight:650}
+.hist-ses ul{margin:4px 0 0; padding-left:18px}
+
+/* ---- modales ---- */
+.modal{position:fixed; inset:0; background:rgba(20,35,45,.55); display:none; z-index:50; padding:16px; overflow:auto}
+.modal.abierto{display:flex; align-items:flex-start; justify-content:center}
+.modal .caja{background:var(--superficie); border-radius:12px; max-width:640px; width:100%; margin:4vh 0; padding:18px; box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal h2{font-size:17px; margin-bottom:12px}
+.modal .caja>.campo:first-of-type{margin-top:4px}
+.modal input[type=text],.modal input[type=time],.modal select{
+  width:100%; border:1px solid var(--borde); border-radius:8px; padding:9px 10px;
+}
+.modal .pie{display:flex; gap:8px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap}
+#modalFoto .caja{max-width:96vw; padding:8px}
+#modalFoto img{width:100%; height:auto; border-radius:8px}
+#txtInforme{min-height:300px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* ---- OCR ---- */
+.ocr-linea{display:flex; gap:8px; align-items:center; margin-bottom:6px}
+.ocr-linea input[type=text]{flex:1}
+.ocr-linea input[type=time]{width:100px}
+#ocrProgreso{font-size:13.5px; color:var(--texto-suave); margin:8px 0}
+
+/* ---- aviso flotante ---- */
+#toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  background:#1C2B33; color:#fff; padding:10px 18px; border-radius:999px;
+  font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:99;
+  max-width:90vw; text-align:center;
+}
+#toast.visible{opacity:1}
+.vacio{color:var(--texto-suave); text-align:center; padding:28px 10px; font-size:14.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="fila">
+    <h1>Consulta diaria · Fisioterapia<small>Los datos se guardan solo en este dispositivo</small></h1>
+    <input type="date" id="fechaDia" aria-label="Día de trabajo">
+  </div>
+</header>
+
+<nav aria-label="Secciones">
+  <div class="fila">
+    <button class="activa" data-tab="hoy">Agenda del día</button>
+    <button data-tab="informe">Informe del día</button>
+    <button data-tab="pacientes">Pacientes</button>
+    <button data-tab="copia">Copia de seguridad</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ AGENDA DEL DÍA ============ -->
+<section id="tab-hoy">
+  <div class="card">
+    <div class="zona-foto">
+      <div id="fotoDia"></div>
+      <div style="flex:1; min-width:220px">
+        <h2 style="font-size:15.5px; margin-bottom:6px">Hoja de pacientes del día</h2>
+        <p class="suave" style="margin:0 0 10px; font-size:13.5px">
+          Haz una foto a la hoja impresa. Puedes leer los nombres automáticamente (OCR, necesita
+          internet la primera vez) o añadirlos a mano mirando la foto.
+        </p>
+        <div class="fila-botones">
+          <label class="btn primario" style="display:inline-block">
+            📷 Foto de la hoja
+            <input type="file" id="inputFoto" accept="image/*" capture="environment" hidden>
+          </label>
+          <button class="btn" id="btnOCR" disabled>Leer nombres (OCR)</button>
+          <button class="btn" id="btnAddPaciente">+ Añadir paciente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-resumen" id="resumenDia"></div>
+  <div id="listaDia"></div>
+</section>
+
+<!-- ============ INFORME DEL DÍA ============ -->
+<section id="tab-informe" hidden>
+  <div class="card">
+    <div class="fila-botones" style="justify-content:space-between">
+      <h2 style="font-size:16px" id="tituloInformeDia">Informes del día</h2>
+      <button class="btn primario" id="btnCopiarTodo">Copiar todos</button>
+    </div>
+    <p class="suave" style="font-size:13.5px; margin:8px 0 0">
+      Un bloque por paciente, listo para pegar en el programa de historia clínica.
+    </p>
+  </div>
+  <div id="listaInformes"></div>
+</section>
+
+<!-- ============ PACIENTES ============ -->
+<section id="tab-pacientes" hidden>
+  <div id="vistaListaPac">
+    <input type="search" id="buscaPac" placeholder="Buscar paciente…">
+    <div class="card" id="listaPacientes"></div>
+  </div>
+  <div id="vistaFichaPac" hidden></div>
+</section>
+
+<!-- ============ COPIA DE SEGURIDAD ============ -->
+<section id="tab-copia" hidden>
+  <div class="card">
+    <h2 style="font-size:16px; margin-bottom:8px">Copia de seguridad</h2>
+    <p class="suave" style="font-size:14px">
+      Todo se guarda en el almacenamiento local de este navegador. Exporta una copia con
+      regularidad (las fotos de las hojas no se incluyen en la copia; los datos de pacientes y
+      sesiones, sí).
+    </p>
+    <div class="fila-botones" style="margin-top:10px">
+      <button class="btn primario" id="btnExportar">Exportar datos (.json)</button>
+      <label class="btn" style="display:inline-block">Importar copia
+        <input type="file" id="inputImportar" accept="application/json,.json" hidden>
+      </label>
+      <button class="btn" id="btnBorrarFotos">Borrar fotos antiguas</button>
+      <button class="btn peligro" id="btnBorrarTodo">Borrar todos los datos</button>
+    </div>
+    <p class="suave" id="usoAlmacen" style="font-size:13px; margin-top:12px"></p>
+  </div>
+</section>
+
+</main>
+
+<!-- ============ MODALES ============ -->
+<div class="modal" id="modalPaciente" role="dialog" aria-modal="true">
+  <div class="caja">
+    <h2 id="tituloModalPaciente">Añadir paciente al día</h2>
+    <div class="campo"><label for="mpNombre">Nombre del paciente</label>
+      <input type="text" id="mpNombre" list="dlPacientes" autocomplete="off">
+      <datalist id="dlPacientes"></datalist>
+    </div>
+    <div class="campo"><label for="mpHora">Hora de la cita</label>
+      <input type="time" id="mpHora">
+    </div>
+    <div class="campo">
+      <label class="check" style="text-transform:none; letter-spacing:0">
+        <input type="checkbox" id="mpPrimera"> Es su primera sesión
+      </label>
+    </div>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cancelar</button>
+      <button class="btn primario" id="mpGuardar">Añadir</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalOCR" role="dialog" aria-modal="true">
+  <div class="caja">
+    <h2>Lectura de la hoja (OCR)</h2>
+    <div id="ocrProgreso"></div>
+    <p class="suave" style="font-size:13.5px">Revisa y corrige: marca solo las líneas que sean pacientes.</p>
+    <div id="ocrLineas"></div>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cancelar</button>
+      <button class="btn primario" id="ocrAdd">Añadir seleccionados</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalAlta" role="dialog" aria-modal="true">
+  <div class="caja">
+    <h2 id="tituloAlta">Alta del paciente</h2>
+    <div class="campo"><label for="altaEstado">Estado al alta</label>
+      <select id="altaEstado">
+        <option>Recuperación completa</option>
+        <option>Mejoría significativa</option>
+        <option>Mejoría parcial</option>
+        <option>Estable / sin cambios</option>
+        <option>Empeoramiento</option>
+      </select>
+    </div>
+    <div class="campo"><label for="altaMotivo">Motivo del alta</label>
+      <select id="altaMotivo">
+        <option>Objetivos terapéuticos alcanzados</option>
+        <option>Fin del tratamiento pautado</option>
+        <option>Continúa con pauta domiciliaria de forma autónoma</option>
+        <option>Abandono / no acude</option>
+        <option>Derivación a otro nivel asistencial</option>
+        <option>Voluntad del paciente</option>
+        <option>Otro</option>
+      </select>
+    </div>
+    <div class="campo"><label for="altaObs">Observaciones (opcional)</label>
+      <textarea id="altaObs"></textarea>
+    </div>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cancelar</button>
+      <button class="btn primario" id="altaGuardar">Dar de alta y generar informe</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalInforme" role="dialog" aria-modal="true">
+  <div class="caja">
+    <h2 id="tituloInforme">Informe</h2>
+    <textarea id="txtInforme" readonly></textarea>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cerrar</button>
+      <button class="btn primario" id="btnCopiarInforme">Copiar al portapapeles</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalFoto" role="dialog" aria-modal="true">
+  <div class="caja">
+    <img id="fotoGrande" alt="Hoja del día ampliada">
+    <div class="pie">
+      <button class="btn peligro" id="btnQuitarFoto">Quitar foto de este día</button>
+      <button class="btn" data-cerrar>Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Consulta Diaria · Fisioterapia — app autocontenida.
+   Todos los datos viven en localStorage de este navegador.
+   ===================================================================== */
+
+const LS_DATOS = 'cdFisio.datos.v1';
+const LS_FOTOS = 'cdFisio.fotos.v1';
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* ---------- estado ---------- */
+let S = { version:1, pacientes:[], sesiones:[] };
+let FOTOS = {};                 // { 'YYYY-MM-DD': dataURL }
+let fechaActual = hoyISO();
+let fichaPacienteId = null;     // paciente abierto en la pestaña Pacientes
+let ocrResultados = [];         // líneas propuestas por el OCR
+let altaPacienteId = null;
+
+function cargar(){
+  try{ const d = JSON.parse(localStorage.getItem(LS_DATOS)); if(d && d.pacientes) S = d; }catch(e){}
+  try{ const f = JSON.parse(localStorage.getItem(LS_FOTOS)); if(f) FOTOS = f; }catch(e){}
+}
+function guardar(){
+  try{ localStorage.setItem(LS_DATOS, JSON.stringify(S)); }
+  catch(e){ toast('⚠️ No se pudo guardar (almacenamiento lleno). Exporta y borra fotos antiguas.'); }
+}
+function guardarFotos(){
+  try{ localStorage.setItem(LS_FOTOS, JSON.stringify(FOTOS)); }
+  catch(e){ toast('⚠️ La foto no cabe en el almacenamiento: se muestra pero no quedará guardada.'); }
+}
+
+/* ---------- utilidades ---------- */
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2)); }
+function hoyISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function ahoraHM(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function fmtFecha(iso){ if(!iso) return '—'; const [a,m,d]=iso.split('-'); return d+'/'+m+'/'+a; }
+function norm(t){ return (t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('visible');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('visible'), 2600);
+}
+async function copiarTexto(txt){
+  try{ await navigator.clipboard.writeText(txt); toast('Copiado al portapapeles'); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand('copy'); toast('Copiado al portapapeles'); }
+    catch(e2){ toast('No se pudo copiar automáticamente'); }
+    ta.remove();
+  }
+}
+
+/* ---------- modelo ---------- */
+function pacientePorId(id){ return S.pacientes.find(p=>p.id===id); }
+function pacientePorNombre(nombre){ const n=norm(nombre); return S.pacientes.find(p=>norm(p.nombre)===n); }
+function crearOEncontrarPaciente(nombre){
+  let p = pacientePorNombre(nombre);
+  if(!p){ p = { id:uid(), nombre:nombre.trim(), creado:hoyISO(), alta:null }; S.pacientes.push(p); }
+  return p;
+}
+function sesionesDelDia(fecha){
+  return S.sesiones.filter(s=>s.fecha===fecha)
+    .sort((a,b)=> (a.horaCita||'99:99').localeCompare(b.horaCita||'99:99') || nombreDe(a).localeCompare(nombreDe(b)));
+}
+function sesionesDePaciente(pid){
+  return S.sesiones.filter(s=>s.pacienteId===pid)
+    .sort((a,b)=> a.fecha.localeCompare(b.fecha) || (a.horaCita||'').localeCompare(b.horaCita||''));
+}
+function nombreDe(ses){ const p=pacientePorId(ses.pacienteId); return p?p.nombre:'(desconocido)'; }
+function primeraSesionFecha(pid){
+  const ses = sesionesDePaciente(pid);
+  const marcada = ses.find(s=>s.primera);
+  return marcada ? marcada.fecha : (ses[0] ? ses[0].fecha : null);
+}
+function numeroDeSesion(ses){
+  // nº de orden entre las sesiones a las que el paciente ha acudido
+  const asistidas = sesionesDePaciente(ses.pacienteId).filter(s=>s.asistencia==='si');
+  const i = asistidas.findIndex(s=>s.id===ses.id);
+  return i>=0 ? i+1 : null;
+}
+function nuevaSesion(pacienteId, fecha, horaCita, primera){
+  const ses = {
+    id:uid(), pacienteId, fecha, horaCita:horaCita||'',
+    asistencia:'pendiente',            // pendiente | si | no
+    horaLlegada:null, primera:!!primera,
+    evolucion:null,                    // mejor | igual | peor
+    pauta:null,                        // si | parcial | no
+    ejercicios:[],                     // {tipo, series, reps, descanso, notas}
+    obs:''
+  };
+  S.sesiones.push(ses);
+  return ses;
+}
+
+/* ---------- textos para informes ---------- */
+const TXT_EVO   = { mejor:'Mejoría respecto a la sesión anterior', igual:'Sin cambios respecto a la sesión anterior', peor:'Empeoramiento respecto a la sesión anterior' };
+const TXT_PAUTA = { si:'Cumple la pauta de tratamiento domiciliario', parcial:'Cumple parcialmente la pauta de tratamiento domiciliario', no:'No cumple la pauta de tratamiento domiciliario' };
+
+function lineaEjercicio(e, i){
+  const partes=[];
+  if(e.series) partes.push(e.series+' series');
+  if(e.reps)   partes.push(e.reps+' repeticiones');
+  let l = '  '+(i+1)+'. '+(e.tipo||'Ejercicio');
+  if(partes.length) l += ' — '+partes.join(' x ');
+  if(e.descanso) l += ', descanso '+e.descanso;
+  if(e.notas) l += ' ('+e.notas+')';
+  return l;
+}
+
+function informeSesion(ses){
+  const p = pacientePorId(ses.pacienteId);
+  const L = [];
+  L.push('FISIOTERAPIA — SEGUIMIENTO DE SESIÓN');
+  L.push('Paciente: '+(p?p.nombre:'—'));
+  L.push('Fecha: '+fmtFecha(ses.fecha)+(ses.horaCita?(' · Cita: '+ses.horaCita):''));
+  if(ses.asistencia==='no'){
+    L.push('Asistencia: NO ACUDE a la cita.');
+    if(ses.obs) L.push('Observaciones: '+ses.obs);
+    return L.join('\n');
+  }
+  if(ses.asistencia==='si'){
+    L.push('Asistencia: Acude'+(ses.horaLlegada?(' a las '+ses.horaLlegada):'')+'.');
+    const n = numeroDeSesion(ses); const f1 = primeraSesionFecha(ses.pacienteId);
+    if(ses.primera) L.push('Primera sesión de tratamiento.');
+    else if(n) L.push('Sesión nº '+n+(f1?(' (inicio de tratamiento: '+fmtFecha(f1)+')'):''));
+  } else {
+    L.push('Asistencia: pendiente de registrar.');
+  }
+  if(ses.evolucion) L.push('Evolución: '+TXT_EVO[ses.evolucion]+'.');
+  if(ses.pauta)     L.push('Adherencia: '+TXT_PAUTA[ses.pauta]+'.');
+  if(ses.ejercicios.length){
+    L.push('Ejercicio terapéutico pautado:');
+    ses.ejercicios.forEach((e,i)=>L.push(lineaEjercicio(e,i)));
+  }
+  if(ses.obs) L.push('Observaciones: '+ses.obs);
+  return L.join('\n');
+}
+
+function resumenEvolucion(pid){
+  const asistidas = sesionesDePaciente(pid).filter(s=>s.asistencia==='si');
+  const ev = {mejor:0, igual:0, peor:0}, pa = {si:0, parcial:0, no:0};
+  asistidas.forEach(s=>{ if(s.evolucion) ev[s.evolucion]++; if(s.pauta) pa[s.pauta]++; });
+  return {asistidas, ev, pa};
+}
+
+function informeAlta(p){
+  const todas = sesionesDePaciente(p.id);
+  const {asistidas, ev, pa} = resumenEvolucion(p.id);
+  const noAsist = todas.filter(s=>s.asistencia==='no').length;
+  const f1 = primeraSesionFecha(p.id);
+  const fUlt = asistidas.length ? asistidas[asistidas.length-1].fecha : null;
+  const L = [];
+  L.push('INFORME DE ALTA DE FISIOTERAPIA');
+  L.push('Paciente: '+p.nombre);
+  L.push('Periodo de tratamiento: '+fmtFecha(f1)+' – '+fmtFecha(p.alta?p.alta.fecha:fUlt));
+  L.push('Sesiones realizadas: '+asistidas.length+(noAsist?(' · No asistencias: '+noAsist):''));
+  L.push('');
+  L.push('EVOLUCIÓN DURANTE EL TRATAMIENTO:');
+  const evRegistradas = ev.mejor+ev.igual+ev.peor;
+  if(evRegistradas){
+    const partes=[];
+    if(ev.mejor) partes.push('mejoría en '+ev.mejor);
+    if(ev.igual) partes.push('sin cambios en '+ev.igual);
+    if(ev.peor)  partes.push('empeoramiento en '+ev.peor);
+    L.push('De '+evRegistradas+' sesiones con evolución registrada: '+partes.join(', ')+'.');
+  } else L.push('Sin registros de evolución por sesión.');
+  const paRegistradas = pa.si+pa.parcial+pa.no;
+  if(paRegistradas){
+    const partes=[];
+    if(pa.si) partes.push('completa en '+pa.si);
+    if(pa.parcial) partes.push('parcial en '+pa.parcial);
+    if(pa.no) partes.push('incumplida en '+pa.no);
+    L.push('Adherencia a la pauta domiciliaria: '+partes.join(', ')+' de '+paRegistradas+' sesiones registradas.');
+  }
+  const ultimaConEj = [...asistidas].reverse().find(s=>s.ejercicios.length);
+  if(ultimaConEj){
+    L.push('');
+    L.push('ÚLTIMO PLAN DE EJERCICIO PAUTADO ('+fmtFecha(ultimaConEj.fecha)+'):');
+    ultimaConEj.ejercicios.forEach((e,i)=>L.push(lineaEjercicio(e,i)));
+  }
+  L.push('');
+  L.push('ESTADO AL ALTA: '+(p.alta?p.alta.estado:'—'));
+  L.push('MOTIVO DEL ALTA: '+(p.alta?p.alta.motivo:'—'));
+  if(p.alta && p.alta.obs) L.push('Observaciones: '+p.alta.obs);
+  return L.join('\n');
+}
+
+function informeHistorial(p){
+  const L=[];
+  L.push('FISIOTERAPIA — HISTORIAL DE SESIONES');
+  L.push('Paciente: '+p.nombre);
+  const f1=primeraSesionFecha(p.id);
+  if(f1) L.push('Inicio de tratamiento: '+fmtFecha(f1));
+  if(p.alta) L.push('Alta: '+fmtFecha(p.alta.fecha)+' — '+p.alta.estado+' ('+p.alta.motivo+')');
+  L.push('');
+  sesionesDePaciente(p.id).forEach(s=>{ L.push(informeSesion(s)); L.push(''); });
+  return L.join('\n').trim();
+}
+
+/* =====================================================================
+   PESTAÑAS
+   ===================================================================== */
+function setTab(nombre){
+  $$('nav button').forEach(b=>b.classList.toggle('activa', b.dataset.tab===nombre));
+  ['hoy','informe','pacientes','copia'].forEach(t=>{ $('#tab-'+t).hidden = (t!==nombre); });
+  if(nombre==='hoy') renderDia();
+  if(nombre==='informe') renderInformeDia();
+  if(nombre==='pacientes') renderPacientes();
+  if(nombre==='copia') renderCopia();
+}
+$$('nav button').forEach(b=>b.addEventListener('click', ()=>setTab(b.dataset.tab)));
+
+$('#fechaDia').addEventListener('change', e=>{
+  fechaActual = e.target.value || hoyISO();
+  renderDia(); renderInformeDia();
+});
+
+/* =====================================================================
+   AGENDA DEL DÍA
+   ===================================================================== */
+function renderDia(){
+  // foto
+  const foto = FOTOS[fechaActual];
+  $('#fotoDia').innerHTML = foto ? '<img src="'+foto+'" alt="Hoja del día" id="thumbFoto">' : '';
+  if(foto) $('#thumbFoto').addEventListener('click', abrirFotoGrande);
+  $('#btnOCR').disabled = !foto;
+
+  const ses = sesionesDelDia(fechaActual);
+  const nSi = ses.filter(s=>s.asistencia==='si').length;
+  const nNo = ses.filter(s=>s.asistencia==='no').length;
+  const nPen= ses.length-nSi-nNo;
+  $('#resumenDia').innerHTML =
+    kpi(ses.length,'Citas')+kpi(nSi,'Han venido')+kpi(nNo,'No han venido')+kpi(nPen,'Pendientes');
+
+  const cont = $('#listaDia');
+  if(!ses.length){
+    cont.innerHTML = '<div class="card vacio">No hay pacientes en este día.<br>Sube la foto de la hoja o añade pacientes a mano.</div>';
+    return;
+  }
+  cont.innerHTML = ses.map(cardSesion).join('');
+  enlazarCardSesiones(cont);
+}
+function kpi(v,l){ return '<div class="kpi"><b>'+v+'</b><span>'+l+'</span></div>'; }
+
+function cardSesion(s){
+  const p = pacientePorId(s.pacienteId);
+  const claseAsis = s.asistencia==='si'?'viene':(s.asistencia==='no'?'noviene':'');
+  const n = numeroDeSesion(s);
+  let h = '<div class="card pac '+claseAsis+'" data-sid="'+s.id+'">';
+  h += '<div class="pac-cab">';
+  h += '<span class="nombre"><a href="#" data-a="ficha">'+esc(nombreDe(s))+'</a></span>';
+  if(s.primera) h += '<span class="chip azul">1ª sesión</span>';
+  else if(n && s.asistencia==='si') h += '<span class="chip gris">Sesión '+n+'</span>';
+  if(p && p.alta) h += '<span class="chip verde">Alta '+fmtFecha(p.alta.fecha)+'</span>';
+  h += '<label class="check">Cita <input type="time" data-f="horaCita" value="'+esc(s.horaCita)+'"></label>';
+  h += '</div>';
+
+  // asistencia
+  h += '<div class="fila-botones" style="margin-top:10px">';
+  h += '<span class="seg">';
+  h += '<button data-a="viene" class="v'+(s.asistencia==='si'?' on':'')+'">✓ Viene</button>';
+  h += '<button data-a="noviene" class="p'+(s.asistencia==='no'?' on':'')+'">✗ No viene</button>';
+  h += '</span>';
+  if(s.asistencia==='si'){
+    h += '<label class="check">Llega a las <input type="time" data-f="horaLlegada" value="'+esc(s.horaLlegada||'')+'"></label>';
+  }
+  if(s.asistencia!=='pendiente') h += '<button class="btn mini" data-a="reset">↺ Deshacer</button>';
+  h += '<span style="flex:1"></span>';
+  h += '<label class="check"><input type="checkbox" data-f="primera"'+(s.primera?' checked':'')+'> 1ª sesión</label>';
+  h += '</div>';
+
+  // detalle de sesión (solo si viene)
+  if(s.asistencia==='si'){
+    h += '<div class="campo"><label>Evolución</label><span class="seg">';
+    h += segBtn(s,'evolucion','mejor','v','Mejor')+segBtn(s,'evolucion','igual','i','Igual')+segBtn(s,'evolucion','peor','p','Peor');
+    h += '</span></div>';
+    h += '<div class="campo"><label>Cumple la pauta de tratamiento</label><span class="seg">';
+    h += segBtn(s,'pauta','si','v','Sí')+segBtn(s,'pauta','parcial','i','Parcial')+segBtn(s,'pauta','no','p','No');
+    h += '</span></div>';
+
+    h += '<div class="campo"><label>Ejercicios pautados</label>';
+    if(s.ejercicios.length){
+      h += '<table class="ejercicios"><thead><tr><th>Tipo de ejercicio</th><th>Series</th><th>Repeticiones</th><th>Descanso</th><th>Carga / notas</th><th></th></tr></thead><tbody>';
+      s.ejercicios.forEach((e,i)=>{
+        h += '<tr>';
+        h += '<td data-l="Tipo de ejercicio"><input data-ej="'+i+'" data-f="tipo" value="'+esc(e.tipo)+'" placeholder="p. ej. Puente glúteo"></td>';
+        h += '<td class="num" data-l="Series"><input data-ej="'+i+'" data-f="series" type="number" min="0" inputmode="numeric" value="'+esc(e.series)+'"></td>';
+        h += '<td class="num" data-l="Repeticiones"><input data-ej="'+i+'" data-f="reps" type="number" min="0" inputmode="numeric" value="'+esc(e.reps)+'"></td>';
+        h += '<td class="des" data-l="Descanso"><input data-ej="'+i+'" data-f="descanso" value="'+esc(e.descanso)+'" placeholder="60 s"></td>';
+        h += '<td data-l="Carga / notas"><input data-ej="'+i+'" data-f="notas" value="'+esc(e.notas)+'" placeholder="banda, 2 kg…"></td>';
+        h += '<td class="quitar"><button data-a="del-ej" data-i="'+i+'" title="Quitar ejercicio" aria-label="Quitar ejercicio">✕</button></td>';
+        h += '</tr>';
+      });
+      h += '</tbody></table>';
+    }
+    h += '<div class="fila-botones" style="margin-top:6px">';
+    h += '<button class="btn mini" data-a="add-ej">+ Añadir ejercicio</button>';
+    if(tieneEjerciciosPrevios(s)) h += '<button class="btn mini" data-a="copiar-ej">Repetir los de la sesión anterior</button>';
+    h += '</div></div>';
+
+    h += '<div class="campo"><label>Observaciones</label><textarea data-f="obs" placeholder="Valoración, técnica aplicada, incidencias…">'+esc(s.obs)+'</textarea></div>';
+  } else if(s.asistencia==='no'){
+    h += '<div class="campo"><label>Observaciones</label><textarea data-f="obs" placeholder="Avisa / no avisa, motivo…">'+esc(s.obs)+'</textarea></div>';
+  }
+
+  h += '<div class="fila-botones" style="margin-top:12px">';
+  h += '<button class="btn mini" data-a="informe">📋 Informe de la sesión</button>';
+  if(p && !p.alta) h += '<button class="btn mini" data-a="alta">Dar de alta</button>';
+  h += '<span style="flex:1"></span>';
+  h += '<button class="btn mini peligro" data-a="del-ses">Quitar del día</button>';
+  h += '</div>';
+
+  h += '</div>';
+  return h;
+}
+function segBtn(s, campo, val, color, etiqueta){
+  return '<button data-a="set" data-c="'+campo+'" data-v="'+val+'" class="'+color+(s[campo]===val?' on':'')+'">'+etiqueta+'</button>';
+}
+function tieneEjerciciosPrevios(s){
+  return !!ejerciciosPrevios(s);
+}
+function ejerciciosPrevios(s){
+  const previas = sesionesDePaciente(s.pacienteId).filter(x=>x.id!==s.id && x.ejercicios.length && (x.fecha<s.fecha || (x.fecha===s.fecha && (x.horaCita||'')<(s.horaCita||''))));
+  return previas.length ? previas[previas.length-1].ejercicios : null;
+}
+
+function enlazarCardSesiones(cont){
+  cont.onclick = ev=>{
+    const btn = ev.target.closest('[data-a]'); if(!btn) return;
+    const card = ev.target.closest('[data-sid]'); if(!card) return;
+    const s = S.sesiones.find(x=>x.id===card.dataset.sid); if(!s) return;
+    const a = btn.dataset.a;
+    if(a==='ficha'){ ev.preventDefault(); abrirFicha(s.pacienteId); return; }
+    if(a==='viene'){ s.asistencia='si'; if(!s.horaLlegada) s.horaLlegada=ahoraHM(); }
+    else if(a==='noviene'){ s.asistencia='no'; }
+    else if(a==='reset'){ s.asistencia='pendiente'; s.horaLlegada=null; }
+    else if(a==='set'){ s[btn.dataset.c] = (s[btn.dataset.c]===btn.dataset.v ? null : btn.dataset.v); }
+    else if(a==='add-ej'){ s.ejercicios.push({tipo:'', series:'', reps:'', descanso:'', notas:''}); }
+    else if(a==='del-ej'){ s.ejercicios.splice(+btn.dataset.i,1); }
+    else if(a==='copiar-ej'){
+      const prev = ejerciciosPrevios(s);
+      if(prev){ s.ejercicios = prev.map(e=>({...e})); toast('Ejercicios copiados de la sesión anterior'); }
+      else toast('No hay ejercicios en sesiones anteriores');
+    }
+    else if(a==='informe'){ abrirInforme('Informe de la sesión — '+nombreDe(s), informeSesion(s)); return; }
+    else if(a==='alta'){ abrirAlta(s.pacienteId); return; }
+    else if(a==='del-ses'){
+      if(!confirm('¿Quitar a '+nombreDe(s)+' de este día? (No borra su historial)')) return;
+      S.sesiones = S.sesiones.filter(x=>x.id!==s.id);
+    }
+    guardar(); renderDia();
+  };
+  cont.onchange = ev=>{
+    const el = ev.target.closest('[data-f]'); if(!el) return;
+    const card = ev.target.closest('[data-sid]'); if(!card) return;
+    const s = S.sesiones.find(x=>x.id===card.dataset.sid); if(!s) return;
+    const f = el.dataset.f;
+    if(el.dataset.ej!=null){ const e=s.ejercicios[+el.dataset.ej]; if(e) e[f]=el.value; }
+    else if(f==='primera'){ s.primera = el.checked; guardar(); renderDia(); return; }
+    else s[f] = (el.type==='checkbox') ? el.checked : el.value;
+    guardar();
+  };
+}
+
+/* ---- añadir paciente a mano ---- */
+$('#btnAddPaciente').addEventListener('click', ()=>{
+  $('#mpNombre').value=''; $('#mpHora').value=''; $('#mpPrimera').checked=false;
+  $('#dlPacientes').innerHTML = S.pacientes.map(p=>'<option value="'+esc(p.nombre)+'">').join('');
+  abrirModal('modalPaciente');
+  setTimeout(()=>$('#mpNombre').focus(), 50);
+});
+$('#mpNombre').addEventListener('input', ()=>{
+  const p = pacientePorNombre($('#mpNombre').value);
+  $('#mpPrimera').checked = !p || !sesionesDePaciente(p.id).length;
+});
+$('#mpGuardar').addEventListener('click', ()=>{
+  const nombre = $('#mpNombre').value.trim();
+  if(!nombre){ toast('Escribe el nombre del paciente'); return; }
+  const p = crearOEncontrarPaciente(nombre);
+  nuevaSesion(p.id, fechaActual, $('#mpHora').value, $('#mpPrimera').checked);
+  guardar(); cerrarModales(); renderDia();
+});
+
+/* ---- foto del día ---- */
+$('#inputFoto').addEventListener('change', async ev=>{
+  const file = ev.target.files[0]; ev.target.value='';
+  if(!file) return;
+  try{
+    const dataURL = await comprimirImagen(file, 1600, .72);
+    FOTOS[fechaActual] = dataURL;
+    guardarFotos(); renderDia();
+    toast('Foto guardada. Puedes leer los nombres con OCR o añadirlos a mano.');
+  }catch(e){ toast('No se pudo procesar la imagen'); }
+});
+function comprimirImagen(file, maxLado, calidad){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const factor = Math.min(1, maxLado/Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*factor); c.height = Math.round(img.height*factor);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      res(c.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+}
+function abrirFotoGrande(){
+  $('#fotoGrande').src = FOTOS[fechaActual] || '';
+  abrirModal('modalFoto');
+}
+$('#btnQuitarFoto').addEventListener('click', ()=>{
+  delete FOTOS[fechaActual]; guardarFotos(); cerrarModales(); renderDia();
+});
+
+/* ---- OCR ---- */
+$('#btnOCR').addEventListener('click', async ()=>{
+  const foto = FOTOS[fechaActual]; if(!foto) return;
+  abrirModal('modalOCR');
+  $('#ocrLineas').innerHTML=''; $('#ocrAdd').disabled=true;
+  const prog = $('#ocrProgreso'); prog.textContent='Cargando motor de OCR…';
+  try{
+    await cargarTesseract();
+    const worker = await Tesseract.createWorker('spa', 1, {
+      logger: m=>{ if(m.status==='recognizing text') prog.textContent='Leyendo la hoja… '+Math.round(m.progress*100)+'%'; }
+    });
+    const {data} = await worker.recognize(foto);
+    await worker.terminate();
+    ocrResultados = (data.text||'').split('\n').map(parsearLineaOCR).filter(Boolean);
+    prog.textContent = ocrResultados.length ? 'Se han detectado '+ocrResultados.length+' líneas:' : 'No se ha detectado texto legible. Añade los pacientes a mano mirando la foto.';
+    $('#ocrLineas').innerHTML = ocrResultados.map((r,i)=>
+      '<div class="ocr-linea">'+
+      '<input type="checkbox" data-i="'+i+'"'+(r.probable?' checked':'')+'>'+
+      '<input type="text" data-i="'+i+'" data-f="nombre" value="'+esc(r.nombre)+'">'+
+      '<input type="time" data-i="'+i+'" data-f="hora" value="'+esc(r.hora)+'">'+
+      '</div>').join('');
+    $('#ocrAdd').disabled = !ocrResultados.length;
+  }catch(e){
+    prog.textContent = '⚠️ No se pudo cargar el OCR (se necesita conexión a internet la primera vez). Añade los pacientes a mano mirando la foto.';
+  }
+});
+function cargarTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    sc.onload = res; sc.onerror = ()=>rej(new Error('sin conexión'));
+    document.head.appendChild(sc);
+  });
+}
+function parsearLineaOCR(linea){
+  let t = linea.replace(/\s+/g,' ').trim();
+  if(t.length<3) return null;
+  let hora='';
+  const m = t.match(/([01]?\d|2[0-3])[:.hH]([0-5]\d)/);
+  if(m){ hora = m[1].padStart(2,'0')+':'+m[2]; t = t.replace(m[0],' '); }
+  // limpia números sueltos y símbolos en los extremos
+  t = t.replace(/[|_*#·•=~<>[\]{}]/g,' ').replace(/\s+/g,' ').trim();
+  const letras = (t.match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g)||[]).length;
+  if(letras<4) return null;
+  const probable = letras>=6 && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}/.test(t);
+  return {nombre:t, hora, probable};
+}
+$('#ocrLineas').addEventListener('change', ev=>{
+  const el=ev.target, i=+el.dataset.i, r=ocrResultados[i]; if(!r) return;
+  if(el.type==='checkbox') r.probable = el.checked;
+  else r[el.dataset.f] = el.value;
+});
+$('#ocrAdd').addEventListener('click', ()=>{
+  const marcadas = $$('#ocrLineas input[type=checkbox]:checked').map(c=>ocrResultados[+c.dataset.i]).filter(Boolean);
+  if(!marcadas.length){ toast('Marca al menos una línea'); return; }
+  let n=0;
+  marcadas.forEach(r=>{
+    const nombre = r.nombre.trim(); if(!nombre) return;
+    const p = crearOEncontrarPaciente(nombre);
+    const yaHoy = sesionesDelDia(fechaActual).some(s=>s.pacienteId===p.id);
+    if(yaHoy) return;
+    const primera = !sesionesDePaciente(p.id).length && !p.alta;
+    nuevaSesion(p.id, fechaActual, r.hora, primera);
+    n++;
+  });
+  guardar(); cerrarModales(); renderDia();
+  toast(n+' paciente'+(n===1?'':'s')+' añadido'+(n===1?'':'s')+' al día');
+});
+
+/* =====================================================================
+   INFORME DEL DÍA
+   ===================================================================== */
+function renderInformeDia(){
+  $('#tituloInformeDia').textContent = 'Informes del '+fmtFecha(fechaActual);
+  const ses = sesionesDelDia(fechaActual);
+  const listos = ses.filter(s=>s.asistencia!=='pendiente');
+  const pend = ses.length - listos.length;
+  const cont = $('#listaInformes');
+  if(!listos.length){
+    cont.innerHTML = '<div class="card vacio">Aún no hay pacientes con asistencia marcada este día.</div>';
+    $('#btnCopiarTodo').disabled = true;
+    return;
+  }
+  $('#btnCopiarTodo').disabled = false;
+  let h = '';
+  if(pend) h += '<div class="card suave" style="font-size:13.5px">Hay '+pend+' cita'+(pend===1?'':'s')+' sin marcar asistencia; no aparece'+(pend===1?'':'n')+' en el listado.</div>';
+  h += listos.map(s=>{
+    return '<div class="card bloque-informe" data-sid="'+s.id+'">'+
+      '<div class="fila-botones" style="justify-content:space-between">'+
+      '<b>'+esc(nombreDe(s))+'</b>'+
+      '<button class="btn mini" data-a="copiar">Copiar</button></div>'+
+      '<pre>'+esc(informeSesion(s))+'</pre></div>';
+  }).join('');
+  cont.innerHTML = h;
+  cont.onclick = ev=>{
+    const btn = ev.target.closest('[data-a=copiar]'); if(!btn) return;
+    const sid = ev.target.closest('[data-sid]').dataset.sid;
+    const s = S.sesiones.find(x=>x.id===sid);
+    if(s) copiarTexto(informeSesion(s));
+  };
+}
+$('#btnCopiarTodo').addEventListener('click', ()=>{
+  const listos = sesionesDelDia(fechaActual).filter(s=>s.asistencia!=='pendiente');
+  if(!listos.length) return;
+  copiarTexto(listos.map(informeSesion).join('\n\n----------------------------------------\n\n'));
+});
+
+/* =====================================================================
+   PACIENTES (listado + ficha)
+   ===================================================================== */
+$('#buscaPac').addEventListener('input', renderPacientes);
+
+function renderPacientes(){
+  if(fichaPacienteId){ renderFicha(); return; }
+  $('#vistaListaPac').hidden = false; $('#vistaFichaPac').hidden = true;
+  const q = norm($('#buscaPac').value);
+  const pacientes = S.pacientes
+    .filter(p=>!q || norm(p.nombre).includes(q))
+    .sort((a,b)=> (!!a.alta)-(!!b.alta) || a.nombre.localeCompare(b.nombre,'es'));
+  const cont = $('#listaPacientes');
+  if(!pacientes.length){ cont.innerHTML = '<div class="vacio">Sin pacientes'+(q?' que coincidan con la búsqueda':' todavía')+'.</div>'; return; }
+  cont.innerHTML = pacientes.map(p=>{
+    const ses = sesionesDePaciente(p.id);
+    const asistidas = ses.filter(s=>s.asistencia==='si').length;
+    return '<div class="pac-lin" data-pid="'+p.id+'">'+
+      '<span class="nombre">'+esc(p.nombre)+'</span>'+
+      '<span class="chip gris">'+asistidas+' sesión'+(asistidas===1?'':'es')+'</span>'+
+      (p.alta?'<span class="chip verde">Alta</span>':'<span class="chip azul">En tratamiento</span>')+
+      '</div>';
+  }).join('');
+  cont.onclick = ev=>{
+    const lin = ev.target.closest('[data-pid]');
+    if(lin) abrirFicha(lin.dataset.pid);
+  };
+}
+
+function abrirFicha(pid){
+  fichaPacienteId = pid;
+  setTab('pacientes');
+}
+function renderFicha(){
+  const p = pacientePorId(fichaPacienteId);
+  if(!p){ fichaPacienteId=null; renderPacientes(); return; }
+  $('#vistaListaPac').hidden = true;
+  const cont = $('#vistaFichaPac'); cont.hidden = false;
+  const ses = sesionesDePaciente(p.id);
+  const {asistidas, ev, pa} = resumenEvolucion(p.id);
+  const noAsist = ses.filter(s=>s.asistencia==='no').length;
+  const f1 = primeraSesionFecha(p.id);
+
+  let h = '<div class="card">';
+  h += '<div class="fila-botones" style="justify-content:space-between">';
+  h += '<button class="btn mini" data-a="volver">← Pacientes</button>';
+  h += '<span></span></div>';
+  h += '<h2 style="font-size:20px; margin:10px 0 4px">'+esc(p.nombre)+'</h2>';
+  h += '<p class="suave" style="margin:0 0 10px; font-size:14px">Inicio: '+fmtFecha(f1)+' · '+asistidas.length+' sesiones realizadas'+(noAsist?(' · '+noAsist+' no asistencias'):'')+'</p>';
+  h += '<div class="fila-botones">';
+  h += '<span class="chip verde">Mejor: '+ev.mejor+'</span><span class="chip ambar">Igual: '+ev.igual+'</span><span class="chip rojo">Peor: '+ev.peor+'</span>';
+  h += '<span class="chip gris">Pauta — sí: '+pa.si+' · parcial: '+pa.parcial+' · no: '+pa.no+'</span>';
+  h += '</div>';
+  if(p.alta){
+    h += '<div class="campo"><label>Alta</label>'+fmtFecha(p.alta.fecha)+' — '+esc(p.alta.estado)+' · '+esc(p.alta.motivo)+(p.alta.obs?('<br><span class="suave">'+esc(p.alta.obs)+'</span>'):'')+'</div>';
+  }
+  h += '<div class="fila-botones" style="margin-top:14px">';
+  h += '<button class="btn" data-a="historial">📋 Informe del historial</button>';
+  if(p.alta){
+    h += '<button class="btn primario" data-a="informe-alta">📋 Informe de alta</button>';
+    h += '<button class="btn" data-a="reabrir">Reabrir (anular alta)</button>';
+  } else {
+    h += '<button class="btn primario" data-a="alta">Dar de alta</button>';
+  }
+  h += '<span style="flex:1"></span>';
+  h += '<button class="btn mini peligro" data-a="borrar-pac">Borrar paciente</button>';
+  h += '</div></div>';
+
+  h += '<div class="card"><h3 style="font-size:15px; margin-bottom:8px">Historial de sesiones</h3>';
+  if(!ses.length) h += '<div class="vacio">Sin sesiones registradas.</div>';
+  [...ses].reverse().forEach(s=>{
+    h += '<div class="hist-ses">';
+    h += '<span class="fecha">'+fmtFecha(s.fecha)+'</span> ';
+    if(s.primera) h += '<span class="chip azul">1ª sesión</span> ';
+    if(s.asistencia==='si') h += '<span class="chip verde">Acude'+(s.horaLlegada?' '+s.horaLlegada:'')+'</span>';
+    else if(s.asistencia==='no') h += '<span class="chip rojo">No acude</span>';
+    else h += '<span class="chip gris">Sin marcar</span>';
+    if(s.evolucion) h += ' <span class="chip '+(s.evolucion==='mejor'?'verde':s.evolucion==='igual'?'ambar':'rojo')+'">'+({mejor:'Mejor',igual:'Igual',peor:'Peor'})[s.evolucion]+'</span>';
+    if(s.pauta) h += ' <span class="chip gris">Pauta: '+({si:'sí',parcial:'parcial',no:'no'})[s.pauta]+'</span>';
+    if(s.ejercicios.length){
+      h += '<ul>'+s.ejercicios.map((e,i)=>'<li>'+esc(lineaEjercicio(e,i).replace(/^\s*\d+\.\s*/,''))+'</li>').join('')+'</ul>';
+    }
+    if(s.obs) h += '<div class="suave" style="font-size:13.5px">'+esc(s.obs)+'</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  cont.innerHTML = h;
+
+  cont.onclick = ev=>{
+    const btn = ev.target.closest('[data-a]'); if(!btn) return;
+    const a = btn.dataset.a;
+    if(a==='volver'){ fichaPacienteId=null; renderPacientes(); }
+    else if(a==='historial') abrirInforme('Historial — '+p.nombre, informeHistorial(p));
+    else if(a==='informe-alta') abrirInforme('Informe de alta — '+p.nombre, informeAlta(p));
+    else if(a==='alta') abrirAlta(p.id);
+    else if(a==='reabrir'){ p.alta=null; guardar(); renderFicha(); toast('Alta anulada; el paciente vuelve a estar en tratamiento'); }
+    else if(a==='borrar-pac'){
+      if(!confirm('¿Borrar a '+p.nombre+' y TODAS sus sesiones? Esta acción no se puede deshacer.')) return;
+      S.pacientes = S.pacientes.filter(x=>x.id!==p.id);
+      S.sesiones = S.sesiones.filter(x=>x.pacienteId!==p.id);
+      guardar(); fichaPacienteId=null; renderPacientes();
+    }
+  };
+}
+
+/* =====================================================================
+   ALTA
+   ===================================================================== */
+function abrirAlta(pid){
+  const p = pacientePorId(pid); if(!p) return;
+  altaPacienteId = pid;
+  $('#tituloAlta').textContent = 'Alta de '+p.nombre;
+  $('#altaObs').value = '';
+  abrirModal('modalAlta');
+}
+$('#altaGuardar').addEventListener('click', ()=>{
+  const p = pacientePorId(altaPacienteId); if(!p) return;
+  p.alta = {
+    fecha: fechaActual,
+    estado: $('#altaEstado').value,
+    motivo: $('#altaMotivo').value,
+    obs: $('#altaObs').value.trim()
+  };
+  guardar(); cerrarModales();
+  renderDia();
+  abrirInforme('Informe de alta — '+p.nombre, informeAlta(p));
+});
+
+/* =====================================================================
+   INFORME (modal genérico con copiar)
+   ===================================================================== */
+function abrirInforme(titulo, texto){
+  $('#tituloInforme').textContent = titulo;
+  $('#txtInforme').value = texto;
+  abrirModal('modalInforme');
+}
+$('#btnCopiarInforme').addEventListener('click', ()=>copiarTexto($('#txtInforme').value));
+
+/* =====================================================================
+   COPIA DE SEGURIDAD
+   ===================================================================== */
+function renderCopia(){
+  let bytes = 0;
+  try{ bytes = (localStorage.getItem(LS_DATOS)||'').length + (localStorage.getItem(LS_FOTOS)||'').length; }catch(e){}
+  const nFotos = Object.keys(FOTOS).length;
+  $('#usoAlmacen').textContent =
+    S.pacientes.length+' pacientes · '+S.sesiones.length+' sesiones · '+nFotos+' fotos guardadas · '+
+    'ocupación aproximada: '+(bytes/1024/1024).toFixed(1)+' MB (límite habitual del navegador: ~5 MB).';
+}
+$('#btnExportar').addEventListener('click', ()=>{
+  const datos = { app:'consulta-diaria-fisio', version:S.version, exportado:new Date().toISOString(), pacientes:S.pacientes, sesiones:S.sesiones };
+  const blob = new Blob([JSON.stringify(datos, null, 1)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'consulta-fisio-'+hoyISO()+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+});
+$('#inputImportar').addEventListener('change', ev=>{
+  const file = ev.target.files[0]; ev.target.value='';
+  if(!file) return;
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const d = JSON.parse(fr.result);
+      if(!Array.isArray(d.pacientes) || !Array.isArray(d.sesiones)) throw new Error('formato');
+      if(!confirm('Se reemplazarán los datos actuales ('+S.pacientes.length+' pacientes) por los de la copia ('+d.pacientes.length+' pacientes). ¿Continuar?')) return;
+      S = { version:1, pacientes:d.pacientes, sesiones:d.sesiones };
+      guardar(); renderCopia(); renderDia();
+      toast('Copia importada correctamente');
+    }catch(e){ toast('El archivo no es una copia válida de esta aplicación'); }
+  };
+  fr.readAsText(file);
+});
+$('#btnBorrarFotos').addEventListener('click', ()=>{
+  const claves = Object.keys(FOTOS).filter(f=>f!==fechaActual);
+  if(!claves.length){ toast('No hay fotos de otros días'); return; }
+  if(!confirm('¿Borrar las fotos de '+claves.length+' día'+(claves.length===1?'':'s')+' (se conserva la del día seleccionado)? Los datos de pacientes no se tocan.')) return;
+  claves.forEach(f=>delete FOTOS[f]);
+  guardarFotos(); renderCopia(); toast('Fotos antiguas borradas');
+});
+$('#btnBorrarTodo').addEventListener('click', ()=>{
+  if(!confirm('¿Borrar TODOS los datos de la aplicación en este navegador? Esta acción no se puede deshacer.')) return;
+  if(!confirm('Última confirmación: se borrarán pacientes, sesiones y fotos. ¿Seguro?')) return;
+  localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_FOTOS);
+  S = { version:1, pacientes:[], sesiones:[] }; FOTOS = {};
+  renderCopia(); renderDia(); toast('Datos borrados');
+});
+
+/* =====================================================================
+   MODALES
+   ===================================================================== */
+function abrirModal(id){ $('#'+id).classList.add('abierto'); }
+function cerrarModales(){ $$('.modal').forEach(m=>m.classList.remove('abierto')); }
+$$('.modal').forEach(m=>{
+  m.addEventListener('click', ev=>{
+    if(ev.target===m || ev.target.closest('[data-cerrar]')) cerrarModales();
+  });
+});
+document.addEventListener('keydown', ev=>{ if(ev.key==='Escape') cerrarModales(); });
+
+/* =====================================================================
+   ARRANQUE
+   ===================================================================== */
+cargar();
+$('#fechaDia').value = fechaActual;
+renderDia();
+</script>
+</body>
+</html>
