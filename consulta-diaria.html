@@ -18,10 +18,20 @@ html,body{margin:0;padding:0}
 body{
   font:15px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   background:var(--fondo); color:var(--texto);
+  -webkit-tap-highlight-color:transparent;
 }
 button{font:inherit; cursor:pointer}
 input,select,textarea{font:inherit; color:inherit}
-h1,h2,h3{margin:0; font-weight:650}
+input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--azul); outline-offset:1px; border-color:var(--azul);
+}
+h1,h2,h3{margin:0; font-weight:650; text-wrap:balance}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none !important; animation:none !important}
+}
+@media (max-width:640px){
+  input,select,textarea{font-size:16px}   /* evita el auto-zoom de iOS al enfocar */
+}
 
 /* ---- cabecera ---- */
 header{
@@ -30,7 +40,7 @@ header{
 }
 header .fila{display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:1080px; margin:0 auto}
 header h1{font-size:18px; letter-spacing:.2px; flex:1; min-width:200px}
-header h1 small{display:block; font-size:12px; font-weight:400; opacity:.85}
+header h1 small{display:block; font-size:12px; font-weight:400; opacity:.92}
 header input[type=date]{
   border:1px solid rgba(255,255,255,.4); background:rgba(255,255,255,.12);
   color:#fff; border-radius:8px; padding:6px 10px;
@@ -45,11 +55,13 @@ nav .fila{display:flex; max-width:1080px; margin:0 auto; overflow-x:auto}
 nav button{
   border:0; background:none; padding:12px 16px; color:var(--texto-suave);
   border-bottom:3px solid transparent; white-space:nowrap; font-weight:550;
+  min-height:44px; transition:color .15s, border-color .15s;
 }
 nav button.activa{color:var(--azul); border-bottom-color:var(--azul)}
 nav button:focus-visible{outline:2px solid var(--azul); outline-offset:-2px}
+@media (hover:hover){ nav button:hover{color:var(--azul)} }
 
-main{max-width:1080px; margin:0 auto; padding:16px 12px 80px}
+main{max-width:1080px; margin:0 auto; padding:16px 12px calc(80px + env(safe-area-inset-bottom))}
 section[hidden]{display:none}
 
 /* ---- tarjetas y utilidades ---- */
@@ -63,20 +75,26 @@ section[hidden]{display:none}
 .chip.gris{background:#EEF2F4; color:var(--texto-suave)}
 .btn{
   border:1px solid var(--borde); background:var(--superficie); color:var(--texto);
-  border-radius:8px; padding:8px 14px; font-weight:550;
+  border-radius:8px; padding:8px 14px; font-weight:550; min-height:40px;
+  transition:border-color .15s, color .15s, background-color .15s;
 }
-.btn:hover{border-color:var(--azul); color:var(--azul)}
+.btn:active{transform:translateY(1px)}
 .btn.primario{background:var(--azul); border-color:var(--azul); color:#fff}
-.btn.primario:hover{background:#00688F; color:#fff}
 .btn.peligro{color:var(--rojo)}
-.btn.peligro:hover{border-color:var(--rojo)}
-.btn.mini{padding:4px 10px; font-size:13px; border-radius:7px}
+.btn.mini{padding:4px 12px; font-size:13px; border-radius:7px; min-height:36px}
 .btn:focus-visible{outline:2px solid var(--azul); outline-offset:2px}
 .btn[disabled]{opacity:.5; cursor:not-allowed}
+@media (hover:hover){
+  .btn:hover{border-color:var(--azul); color:var(--azul)}
+  .btn.primario:hover{background:#00688F; color:#fff}
+  .btn.peligro:hover{border-color:var(--rojo); color:var(--rojo)}
+  .btn[disabled]:hover{border-color:var(--borde); color:inherit}
+  .btn.primario[disabled]:hover{background:var(--azul); color:#fff}
+}
 .fila-botones{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .grid-resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px}
 .kpi{background:var(--superficie); border:1px solid var(--borde); border-radius:var(--radio); padding:10px 12px; text-align:center}
-.kpi b{display:block; font-size:22px}
+.kpi b{display:block; font-size:22px; font-variant-numeric:tabular-nums}
 .kpi span{font-size:12.5px; color:var(--texto-suave)}
 
 /* ---- foto del día ---- */
@@ -90,10 +108,17 @@ section[hidden]{display:none}
 .pac-cab{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
 .pac-cab .nombre{font-size:16.5px; font-weight:650; flex:1; min-width:140px}
 .pac-cab .nombre a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--texto-suave)}
-.pac-cab input[type=time]{border:1px solid var(--borde); border-radius:7px; padding:3px 6px; width:92px}
+.pac-cab input[type=time]{border:1px solid var(--borde); border-radius:7px; padding:5px 6px; width:96px; font-variant-numeric:tabular-nums}
+.check input[type=time]{font-variant-numeric:tabular-nums}
+.check input[type=checkbox]{width:18px; height:18px; accent-color:var(--azul)}
 .seg{display:inline-flex; border:1px solid var(--borde); border-radius:8px; overflow:hidden}
-.seg button{border:0; background:var(--superficie); padding:6px 12px; color:var(--texto-suave); font-weight:550}
+.seg button{
+  border:0; background:var(--superficie); padding:6px 14px; color:var(--texto-suave);
+  font-weight:550; min-height:38px; transition:background-color .15s, color .15s;
+}
 .seg button+button{border-left:1px solid var(--borde)}
+.seg button:focus-visible{outline:2px solid var(--azul); outline-offset:-2px}
+@media (hover:hover){ .seg button:not(.on):hover{color:var(--texto)} }
 .seg button.on{color:#fff}
 .seg button.on.v{background:var(--verde)}
 .seg button.on.i{background:var(--ambar)}
@@ -111,8 +136,13 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
 .ejercicios input{width:100%; border:1px solid var(--borde); border-radius:7px; padding:6px 8px}
 .ejercicios .num{width:64px}
 .ejercicios .des{width:90px}
-.ejercicios .quitar{width:34px; text-align:center}
-.ejercicios .quitar button{border:0; background:none; color:var(--rojo); font-size:16px; padding:4px}
+.ejercicios .quitar{width:42px; text-align:center}
+.ejercicios .quitar button{
+  border:0; background:none; color:var(--rojo); font-size:16px;
+  min-width:38px; min-height:38px; border-radius:7px;
+}
+.ejercicios .quitar button:focus-visible{outline:2px solid var(--rojo); outline-offset:-2px}
+@media (hover:hover){ .ejercicios .quitar button:hover{background:#FBEAEA} }
 @media (max-width:640px){
   .ejercicios, .ejercicios thead, .ejercicios tbody, .ejercicios tr, .ejercicios td{display:block; width:100%}
   .ejercicios thead{display:none}
@@ -131,8 +161,9 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
 
 /* ---- pacientes ---- */
 #buscaPac{width:100%; border:1px solid var(--borde); border-radius:8px; padding:10px 12px; margin-bottom:12px}
-.pac-lin{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--borde); cursor:pointer}
-.pac-lin:hover .nombre{color:var(--azul)}
+.pac-lin{display:flex; align-items:center; gap:10px; padding:10px 6px; border-bottom:1px solid var(--borde); cursor:pointer; border-radius:6px}
+@media (hover:hover){ .pac-lin:hover .nombre{color:var(--azul)} }
+.pac-lin:focus-visible{outline:2px solid var(--azul); outline-offset:-2px}
 .pac-lin .nombre{font-weight:600; flex:1}
 .hist-ses{border-left:3px solid var(--borde); padding:8px 0 8px 14px; margin-left:6px}
 .hist-ses+.hist-ses{border-top:0}
@@ -161,7 +192,7 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
 
 /* ---- aviso flotante ---- */
 #toast{
-  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%);
   background:#1C2B33; color:#fff; padding:10px 18px; border-radius:999px;
   font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:99;
   max-width:90vw; text-align:center;
@@ -276,7 +307,7 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
 </main>
 
 <!-- ============ MODALES ============ -->
-<div class="modal" id="modalPaciente" role="dialog" aria-modal="true">
+<div class="modal" id="modalPaciente" role="dialog" aria-modal="true" aria-labelledby="tituloModalPaciente">
   <div class="caja">
     <h2 id="tituloModalPaciente">Añadir paciente al día</h2>
     <div class="campo"><label for="mpNombre">Nombre del paciente</label>
@@ -301,9 +332,9 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
   </div>
 </div>
 
-<div class="modal" id="modalOCR" role="dialog" aria-modal="true">
+<div class="modal" id="modalOCR" role="dialog" aria-modal="true" aria-labelledby="tituloOCR">
   <div class="caja">
-    <h2>Lectura de la hoja (OCR)</h2>
+    <h2 id="tituloOCR">Lectura de la hoja (OCR)</h2>
     <div id="ocrProgreso"></div>
     <p class="suave" style="font-size:13.5px">Revisa y corrige: marca solo las líneas que sean pacientes.</p>
     <div id="ocrLineas"></div>
@@ -314,7 +345,7 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
   </div>
 </div>
 
-<div class="modal" id="modalAlta" role="dialog" aria-modal="true">
+<div class="modal" id="modalAlta" role="dialog" aria-modal="true" aria-labelledby="tituloAlta">
   <div class="caja">
     <h2 id="tituloAlta">Alta del paciente</h2>
     <div class="campo"><label for="altaEstado">Estado al alta</label>
@@ -347,7 +378,7 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
   </div>
 </div>
 
-<div class="modal" id="modalInforme" role="dialog" aria-modal="true">
+<div class="modal" id="modalInforme" role="dialog" aria-modal="true" aria-labelledby="tituloInforme">
   <div class="caja">
     <h2 id="tituloInforme">Informe</h2>
     <textarea id="txtInforme" readonly></textarea>
@@ -358,7 +389,7 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
   </div>
 </div>
 
-<div class="modal" id="modalFoto" role="dialog" aria-modal="true">
+<div class="modal" id="modalFoto" role="dialog" aria-modal="true" aria-label="Hoja del día ampliada">
   <div class="caja">
     <img id="fotoGrande" alt="Hoja del día ampliada">
     <div class="pie">
@@ -929,11 +960,16 @@ function renderPacientes(){
     .filter(p=>!q || norm(p.nombre).includes(q))
     .sort((a,b)=> (!!a.alta)-(!!b.alta) || a.nombre.localeCompare(b.nombre,'es'));
   const cont = $('#listaPacientes');
-  if(!pacientes.length){ cont.innerHTML = '<div class="vacio">Sin pacientes'+(q?' que coincidan con la búsqueda':' todavía')+'.</div>'; return; }
+  if(!pacientes.length){
+    cont.innerHTML = '<div class="vacio">'+(q
+      ? 'Ningún paciente coincide con la búsqueda.'
+      : 'Todavía no hay pacientes.<br>Se crean solos al añadirlos en la <b>Agenda del día</b>.')+'</div>';
+    return;
+  }
   cont.innerHTML = pacientes.map(p=>{
     const ses = sesionesDePaciente(p.id);
     const asistidas = ses.filter(s=>s.asistencia==='si').length;
-    return '<div class="pac-lin" data-pid="'+p.id+'">'+
+    return '<div class="pac-lin" data-pid="'+p.id+'" tabindex="0" role="button" aria-label="Abrir ficha de '+esc(p.nombre)+'">'+
       '<span class="nombre">'+esc(p.nombre)+'</span>'+
       '<span class="chip gris" title="Código pseudoanónimo">'+esc(codigoPaciente(p))+'</span>'+
       '<span class="chip gris">'+asistidas+' sesión'+(asistidas===1?'':'es')+'</span>'+
@@ -943,6 +979,11 @@ function renderPacientes(){
   cont.onclick = ev=>{
     const lin = ev.target.closest('[data-pid]');
     if(lin) abrirFicha(lin.dataset.pid);
+  };
+  cont.onkeydown = ev=>{
+    if(ev.key!=='Enter' && ev.key!==' ') return;
+    const lin = ev.target.closest('[data-pid]');
+    if(lin){ ev.preventDefault(); abrirFicha(lin.dataset.pid); }
   };
 }
 
