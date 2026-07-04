@@ -5,8 +5,9 @@ package-lock.json
 # Ficheros de prueba (incluyen PDFs/datos reales no publicables)
 test/
 
-# Configuración local del entorno
-.claude/
+# Configuración local del entorno (las skills sí se versionan)
+.claude/*
+!.claude/skills/
 
 # Sistema
 .DS_Store
