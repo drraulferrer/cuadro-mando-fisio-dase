@@ -10,7 +10,9 @@ Spec: [`../specs/cuadro-mando-fisio-dase.md`](../specs/cuadro-mando-fisio-dase.m
 
 - **`cuadro-mando-fisio-dase.html`** — el cuadro de mando. Un solo fichero, sin dependencias externas
   (lleva SheetJS y todo el código embebidos). Funciona **sin internet**.
-- **`index.html`** — redirección al cuadro de mando (cómodo al servir la carpeta).
+- **`consulta-diaria.html`** — app de **consulta diaria** (pacientes del día). Ver
+  [su sección](#consulta-diaria-día-a-día-de-la-consulta) más abajo.
+- **`index.html`** — portada con acceso a las dos aplicaciones (cómodo al servir la carpeta).
 - **`plantillas/`** — plantilla estándar para introducir los datos:
   - `Plantilla_Cuadro_Mando_Fisio_DASE.xlsx` (hojas `Unidades`, `CMI` y `LÉEME`).
   - `Plantilla_Unidades.csv` y `Plantilla_CMI.csv` (alternativa en CSV).
@@ -83,6 +85,42 @@ Cada tema es sólo un conjunto de **variables CSS**. Para crear uno nuevo:
 
 > Si sólo quieres retocar los colores del tema actual, edita las variables del bloque `:root`
 > en `build/styles.css` y reconstruye.
+
+## Consulta diaria (día a día de la consulta)
+
+**`consulta-diaria.html`** es una segunda app, independiente del cuadro de mando, para el trabajo
+diario con pacientes en la consulta:
+
+1. **Hoja del día con foto** — haz una foto a la hoja impresa de pacientes. Puedes leer los
+   nombres automáticamente (**OCR** con Tesseract.js, necesita internet la primera vez) revisando
+   y corrigiendo lo detectado, o añadirlos a mano mirando la foto (que queda guardada y ampliable).
+2. **Asistencia con hora** — marca «Viene / No viene»; al marcar «Viene» se registra la **hora de
+   llegada** automáticamente (editable).
+3. **Registro de la sesión** — evolución (**mejor / igual / peor**), cumplimiento de la **pauta de
+   tratamiento** (sí / parcial / no) y **ejercicios pautados**: tantos como quieras, cada uno con
+   tipo, series, repeticiones, descanso y carga/notas. Botón para **repetir los ejercicios de la
+   sesión anterior**.
+4. **Informe del día** — un bloque de texto por paciente listo para **copiar y pegar** en el
+   software de historia clínica (botón por paciente y «Copiar todos»).
+5. **Historial por paciente** — todas sus sesiones, con marca de **1ª sesión** (se marca sola si el
+   paciente es nuevo) y resumen de evolución y adherencia.
+6. **Alta con informe** — al dar el alta eliges **estado** y **motivo**; se genera un **informe de
+   alta** con el periodo de tratamiento, sesiones realizadas y no asistencias, evolución global,
+   adherencia y último plan de ejercicio, también para copiar y pegar. El alta se puede anular.
+7. **Copia de seguridad** — exportar/importar los datos en JSON y limpiar fotos antiguas.
+
+> **Privacidad:** a diferencia del cuadro de mando, esta app sí maneja datos de pacientes.
+> **Todo se guarda únicamente en el navegador del dispositivo** (localStorage); no se envía nada a
+> ningún servidor. Úsala en un dispositivo propio y bloqueado, exporta copias con regularidad y
+> ten en cuenta que borrar los datos de navegación borra también los de la app.
+
+### Publicar en GitHub Pages (acceso desde el navegador)
+
+1. En GitHub: **Settings → Pages → Source: Deploy from a branch → `main` / root** y guarda.
+2. En unos minutos la web queda en `https://<usuario>.github.io/cuadro-mando-fisio-dase/`
+   (la portada enlaza a las dos apps; la consulta diaria está en `…/consulta-diaria.html`).
+3. Aunque la página se sirva desde GitHub Pages, los datos de pacientes siguen viviendo solo en el
+   navegador que la abre: cada dispositivo tiene sus propios datos.
 
 ## Desplegar en un servidor sencillo
 
