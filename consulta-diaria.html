@@ -243,21 +243,33 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
 <!-- ============ COPIA DE SEGURIDAD ============ -->
 <section id="tab-copia" hidden>
   <div class="card">
-    <h2 style="font-size:16px; margin-bottom:8px">Copia de seguridad</h2>
+    <h2 style="font-size:16px; margin-bottom:8px">Copia de seguridad y exportación</h2>
     <p class="suave" style="font-size:14px">
       Todo se guarda en el almacenamiento local de este navegador. Exporta una copia con
       regularidad (las fotos de las hojas no se incluyen en la copia; los datos de pacientes y
       sesiones, sí).
     </p>
-    <div class="fila-botones" style="margin-top:10px">
-      <button class="btn primario" id="btnExportar">Exportar datos (.json)</button>
+    <p class="suave" style="font-size:14px">
+      Cada paciente tiene un <b>código pseudoanónimo</b>: iniciales del nombre y apellidos +
+      4 últimos dígitos del CIPA (p. ej. <b>MGL-1234</b>). El CIPA se introduce al añadir el
+      paciente o en su ficha. Con la casilla marcada, las copias y el Excel salen con el código
+      <b>en lugar del nombre</b>.
+    </p>
+    <label class="check" style="margin:4px 0 10px">
+      <input type="checkbox" id="chkPseudo" checked>
+      Pseudoanonimizar: sustituir el nombre por el código en las exportaciones
+    </label>
+    <div class="fila-botones">
+      <button class="btn primario" id="btnExportar">Exportar copia (.json)</button>
+      <button class="btn primario" id="btnExcel">Exportar a Excel (.xlsx)</button>
       <label class="btn" style="display:inline-block">Importar copia
         <input type="file" id="inputImportar" accept="application/json,.json" hidden>
       </label>
       <button class="btn" id="btnBorrarFotos">Borrar fotos antiguas</button>
       <button class="btn peligro" id="btnBorrarTodo">Borrar todos los datos</button>
     </div>
-    <p class="suave" id="usoAlmacen" style="font-size:13px; margin-top:12px"></p>
+    <p class="suave" id="avisoCipa" style="font-size:13px; margin-top:12px"></p>
+    <p class="suave" id="usoAlmacen" style="font-size:13px; margin-top:4px"></p>
   </div>
 </section>
 
@@ -270,6 +282,9 @@ textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:8
     <div class="campo"><label for="mpNombre">Nombre del paciente</label>
       <input type="text" id="mpNombre" list="dlPacientes" autocomplete="off">
       <datalist id="dlPacientes"></datalist>
+    </div>
+    <div class="campo"><label for="mpCipa">CIPA — se guardan solo los 4 últimos dígitos (opcional)</label>
+      <input type="text" id="mpCipa" inputmode="numeric" autocomplete="off" placeholder="p. ej. 1234 (puedes pegar el CIPA completo)">
     </div>
     <div class="campo"><label for="mpHora">Hora de la cita</label>
       <input type="time" id="mpHora">
@@ -395,6 +410,22 @@ function hoyISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMo
 function ahoraHM(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 function fmtFecha(iso){ if(!iso) return '—'; const [a,m,d]=iso.split('-'); return d+'/'+m+'/'+a; }
 function norm(t){ return (t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+/* --- código pseudoanónimo: iniciales (nombre + apellidos) + 4 últimos dígitos del CIPA --- */
+const CONECTORES = new Set(['de','del','la','las','los','y','e','i','da','do','das','dos','san','santa','van','von','el']);
+function iniciales(nombre){
+  let ap='', nom=nombre||'';
+  const coma = nom.indexOf(',');
+  if(coma>=0){ ap = nom.slice(0,coma); nom = nom.slice(coma+1); }   // "Apellidos, Nombre" → nombre primero
+  return (nom+' '+ap).split(/\s+/)
+    .filter(w=>w && !CONECTORES.has(w.toLowerCase()))
+    .map(w=>w[0].normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase())
+    .filter(c=>/[A-ZÑ]/.test(c)).join('');
+}
+function cipa4De(texto){ const d=(texto||'').replace(/\D/g,''); return d.slice(-4); }
+function codigoPaciente(p){
+  const ini = iniciales(p.nombre) || 'XX';
+  return p.cipa4 ? ini+'-'+p.cipa4 : ini;
+}
 function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('visible');
@@ -724,7 +755,7 @@ function enlazarCardSesiones(cont){
 
 /* ---- añadir paciente a mano ---- */
 $('#btnAddPaciente').addEventListener('click', ()=>{
-  $('#mpNombre').value=''; $('#mpHora').value=''; $('#mpPrimera').checked=false;
+  $('#mpNombre').value=''; $('#mpCipa').value=''; $('#mpHora').value=''; $('#mpPrimera').checked=false;
   $('#dlPacientes').innerHTML = S.pacientes.map(p=>'<option value="'+esc(p.nombre)+'">').join('');
   abrirModal('modalPaciente');
   setTimeout(()=>$('#mpNombre').focus(), 50);
@@ -737,6 +768,8 @@ $('#mpGuardar').addEventListener('click', ()=>{
   const nombre = $('#mpNombre').value.trim();
   if(!nombre){ toast('Escribe el nombre del paciente'); return; }
   const p = crearOEncontrarPaciente(nombre);
+  const cipa = cipa4De($('#mpCipa').value);
+  if(cipa) p.cipa4 = cipa;
   nuevaSesion(p.id, fechaActual, $('#mpHora').value, $('#mpPrimera').checked);
   guardar(); cerrarModales(); renderDia();
 });
@@ -902,6 +935,7 @@ function renderPacientes(){
     const asistidas = ses.filter(s=>s.asistencia==='si').length;
     return '<div class="pac-lin" data-pid="'+p.id+'">'+
       '<span class="nombre">'+esc(p.nombre)+'</span>'+
+      '<span class="chip gris" title="Código pseudoanónimo">'+esc(codigoPaciente(p))+'</span>'+
       '<span class="chip gris">'+asistidas+' sesión'+(asistidas===1?'':'es')+'</span>'+
       (p.alta?'<span class="chip verde">Alta</span>':'<span class="chip azul">En tratamiento</span>')+
       '</div>';
@@ -932,6 +966,10 @@ function renderFicha(){
   h += '<span></span></div>';
   h += '<h2 style="font-size:20px; margin:10px 0 4px">'+esc(p.nombre)+'</h2>';
   h += '<p class="suave" style="margin:0 0 10px; font-size:14px">Inicio: '+fmtFecha(f1)+' · '+asistidas.length+' sesiones realizadas'+(noAsist?(' · '+noAsist+' no asistencias'):'')+'</p>';
+  h += '<div class="fila-botones" style="margin-bottom:10px">';
+  h += '<span class="chip azul" id="codigoPac" title="Código pseudoanónimo (iniciales + 4 últimos del CIPA)">Código: '+esc(codigoPaciente(p))+'</span>';
+  h += '<label class="check">CIPA (4 últimos) <input type="text" data-f="cipa4" inputmode="numeric" value="'+esc(p.cipa4||'')+'" placeholder="1234" style="width:110px; border:1px solid var(--borde); border-radius:7px; padding:4px 8px"></label>';
+  h += '</div>';
   h += '<div class="fila-botones">';
   h += '<span class="chip verde">Mejor: '+ev.mejor+'</span><span class="chip ambar">Igual: '+ev.igual+'</span><span class="chip rojo">Peor: '+ev.peor+'</span>';
   h += '<span class="chip gris">Pauta — sí: '+pa.si+' · parcial: '+pa.parcial+' · no: '+pa.no+'</span>';
@@ -971,6 +1009,13 @@ function renderFicha(){
   h += '</div>';
   cont.innerHTML = h;
 
+  cont.onchange = ev=>{
+    const el = ev.target.closest('[data-f=cipa4]'); if(!el) return;
+    p.cipa4 = cipa4De(el.value);
+    el.value = p.cipa4;
+    $('#codigoPac').textContent = 'Código: '+codigoPaciente(p);
+    guardar();
+  };
   cont.onclick = ev=>{
     const btn = ev.target.closest('[data-a]'); if(!btn) return;
     const a = btn.dataset.a;
@@ -1028,19 +1073,114 @@ function renderCopia(){
   let bytes = 0;
   try{ bytes = (localStorage.getItem(LS_DATOS)||'').length + (localStorage.getItem(LS_FOTOS)||'').length; }catch(e){}
   const nFotos = Object.keys(FOTOS).length;
+  const sinCipa = S.pacientes.filter(p=>!p.cipa4).length;
+  $('#avisoCipa').textContent = sinCipa
+    ? '⚠️ '+sinCipa+' paciente'+(sinCipa===1?'':'s')+' sin CIPA registrado: su código serán solo las iniciales (menos identificable de forma única). Se añade desde la ficha del paciente.'
+    : (S.pacientes.length ? 'Todos los pacientes tienen CIPA registrado.' : '');
   $('#usoAlmacen').textContent =
     S.pacientes.length+' pacientes · '+S.sesiones.length+' sesiones · '+nFotos+' fotos guardadas · '+
     'ocupación aproximada: '+(bytes/1024/1024).toFixed(1)+' MB (límite habitual del navegador: ~5 MB).';
 }
-$('#btnExportar').addEventListener('click', ()=>{
-  const datos = { app:'consulta-diaria-fisio', version:S.version, exportado:new Date().toISOString(), pacientes:S.pacientes, sesiones:S.sesiones };
-  const blob = new Blob([JSON.stringify(datos, null, 1)], {type:'application/json'});
+function descargar(nombre, contenido, tipo){
+  const blob = contenido instanceof Blob ? contenido : new Blob([contenido], {type:tipo});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'consulta-fisio-'+hoyISO()+'.json';
+  a.download = nombre;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+function pacientesExport(pseudo){
+  return S.pacientes.map(p=>{
+    const q = {...p, codigo: codigoPaciente(p)};
+    if(pseudo){ q.nombre = q.codigo; q.pseudo = true; }
+    return q;
+  });
+}
+$('#btnExportar').addEventListener('click', ()=>{
+  const pseudo = $('#chkPseudo').checked;
+  const datos = {
+    app:'consulta-diaria-fisio', version:S.version, exportado:new Date().toISOString(),
+    pseudoanonimizado: pseudo, pacientes: pacientesExport(pseudo), sesiones: S.sesiones
+  };
+  descargar('consulta-fisio-'+hoyISO()+(pseudo?'-pseudo':'')+'.json', JSON.stringify(datos, null, 1), 'application/json');
+  if(pseudo) toast('Copia pseudoanonimizada: los nombres van sustituidos por el código');
 });
+
+/* ---- exportación a Excel (SheetJS de vendor/; si no carga, CSV) ---- */
+const TXT_ASIS = {si:'Acude', no:'No acude', pendiente:'Sin marcar'};
+const TXT_EVO_CORTO = {mejor:'Mejor', igual:'Igual', peor:'Peor'};
+const TXT_PAUTA_CORTO = {si:'Sí', parcial:'Parcial', no:'No'};
+function filasExport(pseudo){
+  const idPac = {};
+  S.pacientes.forEach(p=>idPac[p.id]=p);
+  const et = p => pseudo ? {'Código': codigoPaciente(p)} : {'Código': codigoPaciente(p), 'Nombre': p.nombre};
+  const pacientes = S.pacientes.map(p=>{
+    const ses = sesionesDePaciente(p.id);
+    return Object.assign(et(p), {
+      'CIPA (4 últimos)': p.cipa4||'',
+      'Inicio tratamiento': fmtFecha(primeraSesionFecha(p.id)),
+      'Sesiones realizadas': ses.filter(s=>s.asistencia==='si').length,
+      'No asistencias': ses.filter(s=>s.asistencia==='no').length,
+      'Situación': p.alta ? 'Alta' : 'En tratamiento',
+      'Fecha alta': p.alta ? fmtFecha(p.alta.fecha) : '',
+      'Estado al alta': p.alta ? p.alta.estado : '',
+      'Motivo del alta': p.alta ? p.alta.motivo : ''
+    });
+  });
+  const orden = [...S.sesiones].sort((a,b)=>a.fecha.localeCompare(b.fecha)||(a.horaCita||'').localeCompare(b.horaCita||''));
+  const sesiones = [], ejercicios = [];
+  orden.forEach(s=>{
+    const p = idPac[s.pacienteId]; if(!p) return;
+    sesiones.push(Object.assign(et(p), {
+      'Fecha': fmtFecha(s.fecha), 'Hora cita': s.horaCita||'',
+      'Asistencia': TXT_ASIS[s.asistencia]||'', 'Hora llegada': s.horaLlegada||'',
+      '1ª sesión': s.primera?'Sí':'', 'Evolución': s.evolucion?TXT_EVO_CORTO[s.evolucion]:'',
+      'Cumple pauta': s.pauta?TXT_PAUTA_CORTO[s.pauta]:'',
+      'Ejercicios': s.ejercicios.map((e,i)=>lineaEjercicio(e,i).trim()).join(' | '),
+      'Observaciones': s.obs||''
+    }));
+    s.ejercicios.forEach(e=>{
+      ejercicios.push(Object.assign(et(p), {
+        'Fecha': fmtFecha(s.fecha), 'Ejercicio': e.tipo||'', 'Series': e.series||'',
+        'Repeticiones': e.reps||'', 'Descanso': e.descanso||'', 'Carga / notas': e.notas||''
+      }));
+    });
+  });
+  return {pacientes, sesiones, ejercicios};
+}
+function cargarXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  return new Promise((res, rej)=>{
+    const sc = document.createElement('script');
+    sc.src = 'vendor/xlsx.full.min.js';
+    sc.onload = res; sc.onerror = ()=>rej(new Error('no disponible'));
+    document.head.appendChild(sc);
+  });
+}
+$('#btnExcel').addEventListener('click', async ()=>{
+  if(!S.pacientes.length){ toast('No hay datos que exportar'); return; }
+  const pseudo = $('#chkPseudo').checked;
+  const {pacientes, sesiones, ejercicios} = filasExport(pseudo);
+  const nombreBase = 'consulta-fisio-'+hoyISO()+(pseudo?'-pseudo':'');
+  try{
+    await cargarXLSX();
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pacientes), 'Pacientes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sesiones), 'Sesiones');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ejercicios.length?ejercicios:[{'Ejercicio':''}]), 'Ejercicios');
+    XLSX.writeFile(wb, nombreBase+'.xlsx');
+    toast('Excel exportado'+(pseudo?' (pseudoanonimizado)':''));
+  }catch(e){
+    descargar(nombreBase+'.csv', aCSV(sesiones), 'text/csv;charset=utf-8');
+    toast('No se pudo generar .xlsx; se ha exportado un .csv (también se abre con Excel)');
+  }
+});
+function aCSV(filas){
+  if(!filas.length) return '\uFEFF';
+  const cab = Object.keys(filas[0]);
+  const celda = v=>{ v = String(v==null?'':v); return /[;"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  return '\uFEFF'+cab.join(';')+'\n'+filas.map(f=>cab.map(c=>celda(f[c])).join(';')).join('\n');
+}
 $('#inputImportar').addEventListener('change', ev=>{
   const file = ev.target.files[0]; ev.target.value='';
   if(!file) return;
