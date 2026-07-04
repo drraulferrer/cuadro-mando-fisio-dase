@@ -575,12 +575,31 @@ function nuevaSesion(pacienteId, fecha, horaCita, primera){
 }
 
 /* ---------- entrada sin teclado: catálogo y frases ---------- */
+/* Catálogo real de la consulta (los ítems pueden ser 'Nombre' o {t:nombre, n:nota por defecto}) */
 const CATALOGO_EJ = [
-  {g:'Miembro inferior', items:['Puente glúteo','Sentadilla','Sentadilla a silla','Zancada','Elevación de talones','Abducción de cadera con banda','Extensión de rodilla con banda','Isométrico de cuádriceps','Equilibrio monopodal','Subida de escalón']},
-  {g:'Miembro superior', items:['Elevación de hombro con banda','Rotación externa con banda','Rotación interna con banda','Remo con banda','Press de pared','Péndulos de hombro','Deslizamientos en pared','Flexión de codo con mancuerna']},
-  {g:'Columna / core', items:['Plancha frontal','Plancha lateral','Bird-dog','Puente con marcha','Gato-camello','Retroversión pélvica','Curl-up abdominal','Extensión lumbar en prono']},
-  {g:'Movilidad / aeróbico', items:['Bicicleta estática','Marcha','Elíptica','Estiramiento de isquiosurales','Estiramiento de gemelos','Movilidad cervical','Movilidad de hombro con bastón','Respiración diafragmática']}
+  {g:'Cervical — movilidad', items:[
+    'Flexo-extensión cervical','Rotaciones cervicales','Inclinaciones cervicales',
+    'Elevación de hombros','Giro de hombros',
+    {t:'Manos al pecho', n:'activación dorsal interescapular'},
+    'Flexión craneocervical'
+  ]},
+  {g:'Hombro / miembro superior', items:[
+    {t:'Rotación externa con goma', n:'resistencia progresiva'},
+    'La cruz (a un pie de distancia)','La cruz (a dos pies de distancia)',
+    {t:'ULNT1', n:'neurodinamia de miembro superior'}
+  ]},
+  {g:'Lumbar — movilidad', items:[
+    'El puente','Báscula pélvica','Rodilla al pecho','Dos rodillas al pecho','SLR',
+    'Abdominal superior','Abdominal doble','Oblicuos'
+  ]},
+  {g:'Lumbar / miembro inferior', items:[
+    {t:'Sentadilla alta', n:'también para rodilla y cadera'},
+    {t:'Monster walk', n:'específico de cadera'},
+    {t:'Excéntricos en escalera', n:'tendón de Aquiles'},
+    {t:'Excéntricos de tibial posterior (4 pasos)', n:'puntilla, rodilla, baja talón y estira rodilla'}
+  ]}
 ];
+function itemEj(x){ return typeof x==='string' ? {t:x, n:''} : x; }
 const DESCANSOS = ['','30 s','45 s','60 s','90 s','2 min','3 min'];
 const FRASES_VIENE = [
   'Buena tolerancia al tratamiento.','Refiere mejoría subjetiva.','Refiere aumento del dolor.',
@@ -908,17 +927,30 @@ function abrirPickerEjercicio(s){
     h += '<div class="ej-grupo"><h3>Usados con frecuencia</h3><div class="frases">'+
       frec.map(t=>'<button type="button" class="frase-chip" data-tipo="'+esc(t)+'">'+esc(t)+'</button>').join('')+'</div></div>';
   }
-  CATALOGO_EJ.forEach(g=>{
-    h += '<div class="ej-grupo"><h3>'+esc(g.g)+'</h3><div class="frases">'+
-      g.items.map(t=>'<button type="button" class="frase-chip" data-tipo="'+esc(t)+'">'+esc(t)+'</button>').join('')+'</div></div>';
+  CATALOGO_EJ.forEach((g,gi)=>{
+    h += '<div class="ej-grupo"><h3>'+esc(g.g)+
+      ' <button type="button" class="btn mini" data-grupo="'+gi+'" style="margin-left:8px; text-transform:none; letter-spacing:0">Añadir todos ('+g.items.length+')</button></h3><div class="frases">'+
+      g.items.map(x=>{ const it=itemEj(x);
+        return '<button type="button" class="frase-chip" data-tipo="'+esc(it.t)+'" data-n="'+esc(it.n)+'">'+esc(it.t)+'</button>';
+      }).join('')+'</div></div>';
   });
   $('#ejListas').innerHTML = h;
   abrirModal('modalEjercicio');
 }
 $('#ejListas').addEventListener('click', ev=>{
-  const chip = ev.target.closest('[data-tipo]'); if(!chip) return;
   const s = S.sesiones.find(x=>x.id===pickerSesionId); if(!s) return;
-  s.ejercicios.push({tipo:chip.dataset.tipo, series:'3', reps:'10', descanso:'60 s', notas:''});
+  const grupo = ev.target.closest('[data-grupo]');
+  if(grupo){
+    const g = CATALOGO_EJ[+grupo.dataset.grupo]; if(!g) return;
+    g.items.forEach(x=>{ const it=itemEj(x);
+      s.ejercicios.push({tipo:it.t, series:'3', reps:'10', descanso:'60 s', notas:it.n});
+    });
+    guardar(); cerrarModales(); renderDia();
+    toast('Añadidos los '+g.items.length+' ejercicios de '+g.g);
+    return;
+  }
+  const chip = ev.target.closest('[data-tipo]'); if(!chip) return;
+  s.ejercicios.push({tipo:chip.dataset.tipo, series:'3', reps:'10', descanso:'60 s', notas:chip.dataset.n||''});
   guardar(); cerrarModales(); renderDia();
   toast('Añadido: '+chip.dataset.tipo+' (3×10, descanso 60 s)');
 });
