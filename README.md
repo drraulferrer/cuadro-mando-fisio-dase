@@ -99,7 +99,10 @@ diario con pacientes en la consulta:
 3. **Registro de la sesión** — evolución (**mejor / igual / peor**), cumplimiento de la **pauta de
    tratamiento** (sí / parcial / no) y **ejercicios pautados**: tantos como quieras, cada uno con
    tipo, series, repeticiones, descanso y carga/notas. Botón para **repetir los ejercicios de la
-   sesión anterior**.
+   sesión anterior**. Pensado para usar **sin teclado** (tablet): los ejercicios se eligen de un
+   **catálogo tocable** (con los usados con frecuencia primero, aprendidos de tu propio registro),
+   las series/repeticiones se ajustan con **− / +**, el descanso es un desplegable y las
+   observaciones tienen **frases rápidas** de un toque (también en el alta).
 4. **Informe del día** — un bloque de texto por paciente listo para **copiar y pegar** en el
    software de historia clínica (botón por paciente y «Copiar todos»).
 5. **Historial por paciente** — todas sus sesiones, con marca de **1ª sesión** (se marca sola si el
