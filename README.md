@@ -107,7 +107,16 @@ diario con pacientes en la consulta:
 6. **Alta con informe** — al dar el alta eliges **estado** y **motivo**; se genera un **informe de
    alta** con el periodo de tratamiento, sesiones realizadas y no asistencias, evolución global,
    adherencia y último plan de ejercicio, también para copiar y pegar. El alta se puede anular.
-7. **Copia de seguridad** — exportar/importar los datos en JSON y limpiar fotos antiguas.
+7. **Código pseudoanónimo** — cada paciente tiene un código con las **iniciales del nombre y
+   apellidos + los 4 últimos dígitos del CIPA** (p. ej. `MGL-1234`). El CIPA se introduce al
+   añadir el paciente o en su ficha (si pegas el CIPA completo, solo se guardan los 4 últimos
+   dígitos). El código se ve en el listado y en la ficha de cada paciente.
+8. **Copia de seguridad y exportación** — exportar/importar los datos en JSON y **exportar a
+   Excel (.xlsx)** con tres hojas: *Pacientes* (situación, sesiones, alta), *Sesiones*
+   (asistencia, horas, evolución, pauta) y *Ejercicios* (tipo, series, repeticiones, descanso).
+   Con la casilla **«Pseudoanonimizar»** (marcada por defecto) las copias y el Excel salen con el
+   código en lugar del nombre. Si el navegador no puede generar `.xlsx`, exporta un `.csv`
+   equivalente que también abre Excel. Botón aparte para limpiar fotos antiguas.
 
 > **Privacidad:** a diferencia del cuadro de mando, esta app sí maneja datos de pacientes.
 > **Todo se guarda únicamente en el navegador del dispositivo** (localStorage); no se envía nada a
