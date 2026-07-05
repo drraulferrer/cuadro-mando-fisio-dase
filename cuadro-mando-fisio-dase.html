@@ -135,6 +135,11 @@ main{max-width:1240px;margin:0 auto;padding:26px 28px 40px}
 #resumenCards .card{flex:1 1 170px;border:none;border-left:1px solid var(--gris-borde);border-radius:0;box-shadow:none;padding:16px 20px}
 #resumenCards .card:first-child{border-left:none}
 #resumenCards .card .v{font-size:1.85rem;margin-top:5px}
+/* Al apilarse (móvil), el divisor pasa de vertical a horizontal para no dejar bordes sueltos */
+@media (max-width:640px){
+  #resumenCards .card{border-left:none;border-top:1px solid var(--gris-borde)}
+  #resumenCards .card:first-child{border-top:none}
+}
 /* ===== Overview BI (pestaña Resumen, estilo Power BI institucional) ===== */
 /* Fila de KPI grandes: la cifra manda (como los ejemplos) */
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px;margin-bottom:22px}
