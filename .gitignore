@@ -2,6 +2,9 @@
 node_modules/
 package-lock.json
 
+# Caché de bytecode de Python (build/assemble.py)
+__pycache__/
+
 # Ficheros de prueba (incluyen PDFs/datos reales no publicables)
 test/
 
