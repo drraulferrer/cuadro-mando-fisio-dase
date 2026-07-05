@@ -105,16 +105,21 @@ diario con pacientes en la consulta:
    observaciones tienen **frases rápidas** de un toque (también en el alta).
 4. **Informe del día** — un bloque de texto por paciente listo para **copiar y pegar** en el
    software de historia clínica (botón por paciente y «Copiar todos»).
-5. **Historial por paciente** — todas sus sesiones, con marca de **1ª sesión** (se marca sola si el
-   paciente es nuevo) y resumen de evolución y adherencia.
+5. **Historial por paciente** — todas sus sesiones, con marca de **1ª sesión** (se marca a mano
+   cuando corresponde) y resumen de evolución y adherencia.
 6. **Alta con informe** — al dar el alta eliges **estado** y **motivo**; se genera un **informe de
    alta** con el periodo de tratamiento, sesiones realizadas y no asistencias, evolución global,
    adherencia y último plan de ejercicio, también para copiar y pegar. El alta se puede anular.
-7. **Código pseudoanónimo** — cada paciente tiene un código con las **iniciales del nombre y
+7. **Estadísticas** — pestaña visual con **el día** (citas, asistencia, mejorías, altas, evolución
+   y pauta de hoy) y **el histórico** con filtro de periodo (4/12 semanas, 6 meses, todo):
+   efectividad clínica (% de sesiones con mejoría), asistencia y ausencias por semana, adherencia
+   a la pauta, altas (estado y media de sesiones) y ejercicios más pautados. Gráficos SVG propios
+   (sin dependencias), con leyenda y vista de tabla en cada uno.
+8. **Código pseudoanónimo** — cada paciente tiene un código con las **iniciales del nombre y
    apellidos + los 4 últimos dígitos del CIPA** (p. ej. `MGL-1234`). El CIPA se introduce al
    añadir el paciente o en su ficha (si pegas el CIPA completo, solo se guardan los 4 últimos
    dígitos). El código se ve en el listado y en la ficha de cada paciente.
-8. **Copia de seguridad y exportación** — exportar/importar los datos en JSON y **exportar a
+9. **Copia de seguridad y exportación** — exportar/importar los datos en JSON y **exportar a
    Excel (.xlsx)** con tres hojas: *Pacientes* (situación, sesiones, alta), *Sesiones*
    (asistencia, horas, evolución, pauta) y *Ejercicios* (tipo, series, repeticiones, descanso).
    Con la casilla **«Pseudoanonimizar»** (marcada por defecto) las copias y el Excel salen con el

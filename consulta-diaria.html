@@ -190,6 +190,31 @@ select.campo-sel{
   .ejercicios tr{border-bottom:1px dashed var(--borde); margin-bottom:8px; padding-bottom:8px}
 }
 
+/* ---- estadísticas ---- */
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:12px 0 4px}
+.stat{background:var(--superficie); border:1px solid var(--borde); border-radius:var(--radio); padding:12px 14px}
+.stat .l{display:block; font-size:12.5px; color:var(--texto-suave)}
+.stat b{font-size:26px; font-weight:650; line-height:1.25}
+.stat .s{display:block; font-size:12px; color:var(--texto-suave)}
+.grafico{margin-top:18px}
+.grafico h3{font-size:14px; margin-bottom:2px}
+.grafico .sub{font-size:12.5px; color:var(--texto-suave); margin:0 0 8px}
+.leyenda{display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--texto-suave); margin-top:6px}
+.leyenda i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px}
+.hbar{display:flex; align-items:center; gap:8px; margin:6px 0; min-height:18px}
+.hbar .hl{width:44%; max-width:250px; font-size:13px; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:none}
+.hbar .track{flex:1}
+.hbar .fill{display:block; height:14px; background:var(--azul); border-radius:0 4px 4px 0; min-width:2px}
+.hbar b{font-size:12.5px; flex:none}
+.tabla-chart{margin-top:8px; font-size:13px}
+.tabla-chart summary{cursor:pointer; color:var(--texto-suave)}
+.tabla-chart summary:focus-visible{outline:2px solid var(--azul); outline-offset:1px}
+.tabla-chart table{border-collapse:collapse; margin-top:6px}
+.tabla-chart td,.tabla-chart th{border:1px solid var(--borde); padding:4px 10px; text-align:left; font-weight:normal; font-variant-numeric:tabular-nums}
+.tabla-chart th{color:var(--texto-suave); font-size:12px}
+svg.chart{width:100%; height:auto; display:block}
+svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; fill:var(--texto-suave)}
+
 /* ---- informe del día ---- */
 .bloque-informe{position:relative}
 .bloque-informe pre{
@@ -264,6 +289,7 @@ select.campo-sel{
   <div class="fila">
     <button class="activa" data-tab="hoy">Agenda del día</button>
     <button data-tab="informe">Informe del día</button>
+    <button data-tab="stats">Estadísticas</button>
     <button data-tab="pacientes">Pacientes</button>
     <button data-tab="copia">Datos</button>
   </div>
@@ -310,6 +336,11 @@ select.campo-sel{
     </p>
   </div>
   <div id="listaInformes"></div>
+</section>
+
+<!-- ============ ESTADÍSTICAS ============ -->
+<section id="tab-stats" hidden>
+  <div id="statsContenido"></div>
 </section>
 
 <!-- ============ PACIENTES ============ -->
@@ -737,9 +768,10 @@ function informeHistorial(p){
    ===================================================================== */
 function setTab(nombre){
   $$('nav button').forEach(b=>b.classList.toggle('activa', b.dataset.tab===nombre));
-  ['hoy','informe','pacientes','copia'].forEach(t=>{ $('#tab-'+t).hidden = (t!==nombre); });
+  ['hoy','informe','stats','pacientes','copia'].forEach(t=>{ $('#tab-'+t).hidden = (t!==nombre); });
   if(nombre==='hoy') renderDia();
   if(nombre==='informe') renderInformeDia();
+  if(nombre==='stats') renderStats();
   if(nombre==='pacientes') renderPacientes();
   if(nombre==='copia') renderCopia();
 }
@@ -748,6 +780,7 @@ $$('nav button').forEach(b=>b.addEventListener('click', ()=>setTab(b.dataset.tab
 $('#fechaDia').addEventListener('change', e=>{
   fechaActual = e.target.value || hoyISO();
   renderDia(); renderInformeDia();
+  if(!$('#tab-stats').hidden) renderStats();
 });
 
 /* =====================================================================
@@ -972,10 +1005,7 @@ $('#btnAddPaciente').addEventListener('click', ()=>{
   abrirModal('modalPaciente');
   setTimeout(()=>$('#mpNombre').focus(), 50);
 });
-$('#mpNombre').addEventListener('input', ()=>{
-  const p = pacientePorNombre($('#mpNombre').value);
-  $('#mpPrimera').checked = !p || !sesionesDePaciente(p.id).length;
-});
+// La marca de 1ª sesión es siempre manual: no se pre-marca ni para pacientes nuevos.
 $('#mpGuardar').addEventListener('click', ()=>{
   const nombre = $('#mpNombre').value.trim();
   if(!nombre){ toast('Escribe el nombre del paciente'); return; }
@@ -1082,8 +1112,7 @@ $('#ocrAdd').addEventListener('click', ()=>{
     const p = crearOEncontrarPaciente(nombre);
     const yaHoy = sesionesDelDia(fechaActual).some(s=>s.pacienteId===p.id);
     if(yaHoy) return;
-    const primera = !sesionesDePaciente(p.id).length && !p.alta;
-    nuevaSesion(p.id, fechaActual, r.hora, primera);
+    nuevaSesion(p.id, fechaActual, r.hora, false);
     n++;
   });
   guardar(); cerrarModales(); renderDia();
@@ -1127,6 +1156,233 @@ $('#btnCopiarTodo').addEventListener('click', ()=>{
   if(!listos.length) return;
   copiarTexto(listos.map(informeSesion).join('\n\n----------------------------------------\n\n'));
 });
+
+/* =====================================================================
+   ESTADÍSTICAS (día + histórico, SVG propio sin dependencias)
+   ===================================================================== */
+let statsSemanas = 12;   // 4 | 12 | 26 | 0 (= todo el histórico)
+const C_AZUL='#0079A8', C_ROJO='#D23B3B', C_VERDE='#2E7D32', C_AMBAR='#8F5400', C_NEUTRO='#6E7883';
+
+function lunesDe(fechaISO){
+  const [a,m,d] = fechaISO.split('-').map(Number);
+  const dt = new Date(a, m-1, d);
+  dt.setDate(dt.getDate() - ((dt.getDay()+6)%7));
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+function pctDe(n,t){ return t ? Math.round(n/t*100) : 0; }
+function niceMax(v){ if(v<=5) return 5; if(v<=10) return 10; const paso = v<=20?5 : v<=50?10 : v<=100?20 : 50; return Math.ceil(v/paso)*paso; }
+/* rectángulo con radios por esquina [tl,tr,br,bl], acotados a la mitad del lado */
+function pRect(x,y,w,h,r){
+  const lim = Math.min(w/2, h/2);
+  const [tl,tr,br,bl] = r.map(v=>Math.min(v, lim));
+  return 'M'+(x+tl)+','+y+'h'+(w-tl-tr)+(tr?('a'+tr+','+tr+' 0 0 1 '+tr+','+tr):'')
+    +'v'+(h-tr-br)+(br?('a'+br+','+br+' 0 0 1 -'+br+','+br):'')
+    +'h-'+(w-br-bl)+(bl?('a'+bl+','+bl+' 0 0 1 -'+bl+',-'+bl):'')
+    +'v-'+(h-bl-tl)+(tl?('a'+tl+','+tl+' 0 0 1 '+tl+',-'+tl):'')+'z';
+}
+function tile(l,v,s){ return '<div class="stat"><span class="l">'+esc(l)+'</span><b>'+v+'</b>'+(s?('<span class="s">'+esc(s)+'</span>'):'')+'</div>'; }
+function leyenda(items){
+  return '<div class="leyenda">'+items.map(i=>'<span><i style="background:'+i.color+'"></i>'+esc(i.label)+' · '+i.n+'</span>').join('')+'</div>';
+}
+function tablaChart(cabs, filas){
+  return '<details class="tabla-chart"><summary>Ver como tabla</summary><table><tr>'+
+    cabs.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>'+
+    filas.map(f=>'<tr>'+f.map(c=>'<td>'+esc(String(c))+'</td>').join('')+'</tr>').join('')+'</table></details>';
+}
+/* barra apilada horizontal al 100 % (evolución, pauta) */
+function chartApilada(segs, aria){
+  const total = segs.reduce((t,x)=>t+x.n, 0);
+  if(!total) return '<div class="vacio" style="padding:8px 0">Sin registros.</div>';
+  const W=640, gap=2, vis=segs.filter(x=>x.n>0);
+  let x=0, s='';
+  vis.forEach((seg,i)=>{
+    const w = seg.n/total*W - (i<vis.length-1 ? gap : 0);
+    const rl = i===0?4:0, rr = i===vis.length-1?4:0;
+    s += '<g><title>'+esc(seg.label+': '+seg.n+' ('+pctDe(seg.n,total)+'%)')+'</title>';
+    s += '<path d="'+pRect(x, 2, Math.max(w,1), 28, [rl,rr,rr,rl])+'" fill="'+seg.color+'"/>';
+    if(w>=64) s += '<text x="'+(x+w/2)+'" y="21" text-anchor="middle" style="fill:#fff">'+seg.n+' · '+pctDe(seg.n,total)+'%</text>';
+    s += '</g>';
+    x += w + gap;
+  });
+  return '<svg class="chart" viewBox="0 0 640 32" role="img" aria-label="'+esc(aria)+'">'+s+'</svg>';
+}
+/* columnas apiladas por semana: realizadas (azul) + ausencias (rojo) */
+function chartSemanas(filas){
+  if(!filas.length) return '<div class="vacio" style="padding:8px 0">Sin sesiones registradas en el periodo.</div>';
+  const W=640, H=190, padL=34, padR=6, padT=10, padB=24;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const max = niceMax(Math.max(...filas.map(f=>f.si+f.no), 1));
+  const slot = plotW/filas.length, bw = Math.min(24, Math.max(6, slot*0.55));
+  let s='';
+  const ticks = (max%2===0) ? [0, max/2, max] : [0, max];
+  ticks.forEach(t=>{
+    const y = padT + plotH*(1 - t/max);
+    s += '<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="#E4EBEF" stroke-width="1"/>';
+    s += '<text x="'+(padL-6)+'" y="'+(y+4)+'" text-anchor="end">'+t+'</text>';
+  });
+  const cada = Math.ceil(filas.length/8);
+  filas.forEach((f,i)=>{
+    const x = padL + slot*i + (slot-bw)/2;
+    const hSi = plotH*f.si/max, hNo = plotH*f.no/max;
+    const gap = (f.si && f.no) ? 2 : 0;
+    const ySi = padT + plotH - hSi;
+    const yNo = ySi - gap - hNo;
+    s += '<g><title>'+esc('Semana del '+fmtFecha(f.w)+': '+f.si+' realizadas, '+f.no+' ausencias')+'</title>';
+    if(f.si) s += '<path d="'+pRect(x, ySi, bw, hSi, f.no?[0,0,0,0]:[4,4,0,0])+'" fill="'+C_AZUL+'"/>';
+    if(f.no) s += '<path d="'+pRect(x, yNo, bw, hNo, [4,4,0,0])+'" fill="'+C_ROJO+'"/>';
+    if(!f.si && !f.no) s += '<rect x="'+x+'" y="'+(padT+plotH-1)+'" width="'+bw+'" height="1" fill="#E4EBEF"/>';
+    s += '</g>';
+    if(i%cada===0) s += '<text x="'+(x+bw/2)+'" y="'+(H-6)+'" text-anchor="middle">'+fmtFecha(f.w).slice(0,5)+'</text>';
+  });
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Sesiones realizadas y ausencias por semana">'+s+'</svg>';
+}
+/* barras horizontales de un solo tono (altas, ejercicios) */
+function barrasH(items){
+  if(!items.length) return '<div class="vacio" style="padding:8px 0">Sin datos en el periodo.</div>';
+  const max = Math.max(...items.map(i=>i.n));
+  return items.map(i=>
+    '<div class="hbar"><span class="hl" title="'+esc(i.label)+'">'+esc(i.label)+'</span>'+
+    '<span class="track"><span class="fill" style="width:'+(i.n/max*100)+'%"></span></span><b>'+i.n+'</b></div>').join('');
+}
+
+function renderStats(){
+  const cont = $('#statsContenido');
+  /* --- periodo del histórico --- */
+  let desde = null;
+  if(statsSemanas){
+    const [a,m,d] = lunesDe(fechaActual).split('-').map(Number);
+    const dt = new Date(a, m-1, d);
+    dt.setDate(dt.getDate() - 7*(statsSemanas-1));
+    desde = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  }
+  /* --- el día --- */
+  const dia = sesionesDelDia(fechaActual);
+  const dSi = dia.filter(s=>s.asistencia==='si'), dNo = dia.filter(s=>s.asistencia==='no');
+  const dEv = {mejor:0,igual:0,peor:0}, dPa = {si:0,parcial:0,no:0};
+  dSi.forEach(s=>{ if(s.evolucion) dEv[s.evolucion]++; if(s.pauta) dPa[s.pauta]++; });
+  const dEvTot = dEv.mejor+dEv.igual+dEv.peor, dPaTot = dPa.si+dPa.parcial+dPa.no;
+  const altasHoy = S.pacientes.filter(p=>p.alta && p.alta.fecha===fechaActual).length;
+  /* --- histórico filtrado --- */
+  const ses = S.sesiones.filter(s=>!desde || s.fecha>=desde);
+  const hSi = ses.filter(s=>s.asistencia==='si'), hNo = ses.filter(s=>s.asistencia==='no');
+  const hEv = {mejor:0,igual:0,peor:0}, hPa = {si:0,parcial:0,no:0};
+  hSi.forEach(s=>{ if(s.evolucion) hEv[s.evolucion]++; if(s.pauta) hPa[s.pauta]++; });
+  const evTot = hEv.mejor+hEv.igual+hEv.peor, paTot = hPa.si+hPa.parcial+hPa.no, asisTot = hSi.length+hNo.length;
+  const pacAtendidos = new Set(hSi.map(s=>s.pacienteId)).size;
+  const enTratamiento = S.pacientes.filter(p=>!p.alta).length;
+  const altas = S.pacientes.filter(p=>p.alta && (!desde || p.alta.fecha>=desde));
+  const mediaSesAlta = altas.length
+    ? (altas.reduce((t,p)=>t+sesionesDePaciente(p.id).filter(s=>s.asistencia==='si').length, 0)/altas.length).toFixed(1).replace('.',',')
+    : null;
+  /* semanas (rellenando las vacías) */
+  const mapa = {};
+  ses.forEach(s=>{
+    if(s.asistencia!=='si' && s.asistencia!=='no') return;
+    const w = lunesDe(s.fecha);
+    (mapa[w] = mapa[w] || {si:0,no:0})[s.asistencia]++;
+  });
+  const sem = Object.keys(mapa).sort();
+  const filasSem = [];
+  if(sem.length){
+    const fin = sem[sem.length-1];
+    const [a,m,d] = sem[0].split('-').map(Number);
+    const dt = new Date(a, m-1, d);
+    let guarda = 0;
+    while(guarda++ < 160){
+      const w = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      filasSem.push({w, si:(mapa[w]||{}).si||0, no:(mapa[w]||{}).no||0});
+      if(w>=fin) break;
+      dt.setDate(dt.getDate()+7);
+    }
+  }
+  const estadosAlta = {};
+  altas.forEach(p=>{ estadosAlta[p.alta.estado] = (estadosAlta[p.alta.estado]||0)+1; });
+  const itemsAlta = Object.entries(estadosAlta).sort((a,b)=>b[1]-a[1]).map(([label,n])=>({label,n}));
+  const cuentaEj = {};
+  hSi.forEach(s=>s.ejercicios.forEach(e=>{ const t=(e.tipo||'').trim(); if(t) cuentaEj[t]=(cuentaEj[t]||0)+1; }));
+  const topEj = Object.entries(cuentaEj).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([label,n])=>({label,n}));
+  const etiquetaPeriodo = statsSemanas ? 'últimas '+statsSemanas+' semanas' : 'todo el histórico';
+
+  const SEG_EV = [{label:'Mejor',n:0,color:C_VERDE},{label:'Igual',n:0,color:C_NEUTRO},{label:'Peor',n:0,color:C_ROJO}];
+  const segEv = ev => SEG_EV.map((s,i)=>({...s, n:[ev.mejor,ev.igual,ev.peor][i]}));
+  const segPa = pa => [{label:'Sí',n:pa.si,color:C_VERDE},{label:'Parcial',n:pa.parcial,color:C_AMBAR},{label:'No',n:pa.no,color:C_ROJO}];
+
+  let h = '';
+  /* ===== EL DÍA ===== */
+  h += '<div class="card"><h2 style="font-size:16px">El día · '+fmtFecha(fechaActual)+'</h2>';
+  h += '<div class="stat-grid">';
+  h += tile('Citas', dia.length, '');
+  h += tile('Asisten', dSi.length, (dSi.length+dNo.length) ? pctDe(dSi.length, dSi.length+dNo.length)+'% de las marcadas' : '');
+  h += tile('No asisten', dNo.length, '');
+  h += tile('Pendientes', dia.length-dSi.length-dNo.length, '');
+  h += tile('Con mejoría', dEv.mejor, dEvTot ? 'de '+dEvTot+' valorados' : 'sin valoraciones aún');
+  h += tile('Altas hoy', altasHoy, '');
+  h += '</div>';
+  if(dEvTot){
+    h += '<div class="grafico"><h3>Evolución de hoy</h3>'+chartApilada(segEv(dEv), 'Evolución clínica de hoy')+leyenda(segEv(dEv))+'</div>';
+  }
+  if(dPaTot){
+    h += '<div class="grafico"><h3>Cumplimiento de pauta hoy</h3>'+chartApilada(segPa(dPa), 'Cumplimiento de pauta de hoy')+leyenda(segPa(dPa))+'</div>';
+  }
+  h += '</div>';
+
+  /* ===== HISTÓRICO ===== */
+  h += '<div class="card">';
+  h += '<div class="fila-botones" style="justify-content:space-between"><h2 style="font-size:16px">Histórico</h2>';
+  h += '<span class="seg" role="group" aria-label="Periodo del histórico">'+
+    [[4,'4 sem'],[12,'12 sem'],[26,'6 meses'],[0,'Todo']].map(([v,l])=>
+      '<button data-sem="'+v+'" class="a'+(statsSemanas===v?' on':'')+'">'+l+'</button>').join('')+'</span></div>';
+  if(!ses.length){
+    h += '<div class="vacio">Aún no hay sesiones registradas en este periodo.</div></div>';
+    cont.innerHTML = h;
+    enlazarStats(cont);
+    return;
+  }
+  h += '<div class="stat-grid">';
+  h += tile('Sesiones realizadas', hSi.length, etiquetaPeriodo);
+  h += tile('Asistencia', asisTot ? pctDe(hSi.length, asisTot)+'%' : '—', hNo.length+' ausencia'+(hNo.length===1?'':'s'));
+  h += tile('Efectividad clínica', evTot ? pctDe(hEv.mejor, evTot)+'%' : '—', evTot ? 'con mejoría ('+hEv.mejor+' de '+evTot+' valoradas)' : 'sin valoraciones');
+  h += tile('Pauta completa', paTot ? pctDe(hPa.si, paTot)+'%' : '—', paTot ? 'parcial '+pctDe(hPa.parcial,paTot)+'% · no '+pctDe(hPa.no,paTot)+'%' : 'sin registros');
+  h += tile('Pacientes atendidos', pacAtendidos, enTratamiento+' en tratamiento ahora');
+  h += tile('Altas', altas.length, mediaSesAlta ? 'media '+mediaSesAlta+' sesiones por alta' : '');
+  h += '</div>';
+
+  h += '<div class="grafico"><h3>Actividad por semana</h3><p class="sub">Sesiones realizadas y ausencias (semana del lunes indicado)</p>';
+  h += chartSemanas(filasSem);
+  h += leyenda([{label:'Realizadas', n:hSi.length, color:C_AZUL},{label:'Ausencias', n:hNo.length, color:C_ROJO}]);
+  h += tablaChart(['Semana','Realizadas','Ausencias'], filasSem.map(f=>[fmtFecha(f.w), f.si, f.no]));
+  h += '</div>';
+
+  h += '<div class="grafico"><h3>Evolución clínica</h3><p class="sub">Valoración registrada en cada sesión ('+etiquetaPeriodo+')</p>';
+  h += chartApilada(segEv(hEv), 'Distribución de evolución clínica')+leyenda(segEv(hEv));
+  h += tablaChart(['Evolución','Sesiones','%'], segEv(hEv).map(s=>[s.label, s.n, pctDe(s.n,evTot)+'%']));
+  h += '</div>';
+
+  h += '<div class="grafico"><h3>Adherencia a la pauta domiciliaria</h3><p class="sub">Cumplimiento registrado en cada sesión</p>';
+  h += chartApilada(segPa(hPa), 'Distribución de cumplimiento de pauta')+leyenda(segPa(hPa));
+  h += tablaChart(['Pauta','Sesiones','%'], segPa(hPa).map(s=>[s.label, s.n, pctDe(s.n,paTot)+'%']));
+  h += '</div>';
+
+  h += '<div class="grafico"><h3>Estado al alta</h3><p class="sub">'+(altas.length? altas.length+' alta'+(altas.length===1?'':'s')+' en el periodo' : 'Sin altas en el periodo')+'</p>';
+  h += barrasH(itemsAlta);
+  if(itemsAlta.length) h += tablaChart(['Estado al alta','Pacientes'], itemsAlta.map(i=>[i.label, i.n]));
+  h += '</div>';
+
+  h += '<div class="grafico"><h3>Ejercicios más pautados</h3><p class="sub">Veces que aparece cada ejercicio en las sesiones realizadas</p>';
+  h += barrasH(topEj);
+  if(topEj.length) h += tablaChart(['Ejercicio','Veces'], topEj.map(i=>[i.label, i.n]));
+  h += '</div>';
+
+  h += '</div>';
+  cont.innerHTML = h;
+  enlazarStats(cont);
+}
+function enlazarStats(cont){
+  cont.onclick = ev=>{
+    const b = ev.target.closest('[data-sem]');
+    if(b){ statsSemanas = +b.dataset.sem; renderStats(); }
+  };
+}
 
 /* =====================================================================
    PACIENTES (listado + ficha)
