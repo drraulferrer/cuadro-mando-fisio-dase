@@ -9,6 +9,10 @@ test/
 .claude/*
 !.claude/skills/
 
+# Artefactos de build de Python (assemble.py)
+__pycache__/
+*.pyc
+
 # Sistema
 .DS_Store
 *.log

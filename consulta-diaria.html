@@ -39,8 +39,11 @@ header{
   color:#fff; padding:12px 16px;
 }
 header .fila{display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:1080px; margin:0 auto}
-header h1{font-size:18px; letter-spacing:.2px; flex:1; min-width:200px}
-header h1 small{display:block; font-size:12px; font-weight:400; opacity:.92}
+header .brand-accent{width:3px; align-self:stretch; min-height:38px; background:#FF3333; border-radius:2px; flex:none}
+header .brand-txt{flex:1; min-width:200px}
+header .eyebrow{font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; opacity:.85; line-height:1.2}
+header h1{font-size:18px; letter-spacing:.2px; margin-top:2px}
+header h1 small{display:block; font-size:12px; font-weight:400; opacity:.92; margin-top:2px}
 header input[type=date]{
   border:1px solid rgba(255,255,255,.4); background:rgba(255,255,255,.12);
   color:#fff; border-radius:8px; padding:6px 10px;
@@ -94,8 +97,13 @@ section[hidden]{display:none}
 .fila-botones{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .grid-resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px}
 .kpi{background:var(--superficie); border:1px solid var(--borde); border-radius:var(--radio); padding:10px 12px; text-align:center}
-.kpi b{display:block; font-size:22px; font-variant-numeric:tabular-nums}
-.kpi span{font-size:12.5px; color:var(--texto-suave)}
+.kpi b{display:block; font-size:22px; font-variant-numeric:tabular-nums; line-height:1.1}
+.kpi span{display:inline-flex; align-items:center; justify-content:center; gap:6px; margin-top:3px; font-size:12.5px; color:var(--texto-suave)}
+.kpi span::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--borde); flex:none}
+.kpi.k-verde span::before{background:var(--verde)}
+.kpi.k-rojo span::before{background:var(--rojo)}
+.kpi.k-ambar span::before{background:var(--ambar)}
+.kpi.k-azul span::before{background:var(--azul)}
 
 /* ---- foto del día ---- */
 #fotoDia img{max-width:160px; max-height:120px; border-radius:8px; border:1px solid var(--borde); cursor:zoom-in; display:block}
@@ -243,14 +251,21 @@ select.campo-sel{
   max-width:90vw; text-align:center;
 }
 #toast.visible{opacity:1}
-.vacio{color:var(--texto-suave); text-align:center; padding:28px 10px; font-size:14.5px}
+.vacio{color:var(--texto-suave); text-align:center; padding:32px 16px; font-size:14px}
+.vacio-ico{display:block; margin:0 auto 8px; color:var(--borde)}
+.vacio-tit{margin:0; font-weight:650; font-size:15px; color:var(--texto)}
+.vacio-sub{margin:5px 0 0; font-size:13.5px; color:var(--texto-suave)}
 </style>
 </head>
 <body>
 
 <header>
   <div class="fila">
-    <h1>Consulta diaria · Fisioterapia<small>Los datos se guardan solo en este dispositivo</small></h1>
+    <div class="brand-accent" aria-hidden="true"></div>
+    <div class="brand-txt">
+      <div class="eyebrow">Servicio Madrileño de Salud · DASE Sureste</div>
+      <h1>Consulta diaria · Fisioterapia<small>Los datos se guardan solo en este dispositivo</small></h1>
+    </div>
     <input type="date" id="fechaDia" aria-label="Día de trabajo">
   </div>
 </header>
@@ -760,17 +775,21 @@ function renderDia(){
   const nNo = ses.filter(s=>s.asistencia==='no').length;
   const nPen= ses.length-nSi-nNo;
   $('#resumenDia').innerHTML =
-    kpi(ses.length,'Citas')+kpi(nSi,'Han venido')+kpi(nNo,'No han venido')+kpi(nPen,'Pendientes');
+    kpi(ses.length,'Citas','k-azul')+kpi(nSi,'Han venido','k-verde')+kpi(nNo,'No han venido','k-rojo')+kpi(nPen,'Pendientes','k-ambar');
 
   const cont = $('#listaDia');
   if(!ses.length){
-    cont.innerHTML = '<div class="card vacio">No hay pacientes en este día.<br>Sube la foto de la hoja o añade pacientes a mano.</div>';
+    cont.innerHTML = '<div class="card vacio">'+
+      '<svg class="vacio-ico" viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>'+
+      '<p class="vacio-tit">No hay pacientes en este día</p>'+
+      '<p class="vacio-sub">Sube la foto de la hoja o añade pacientes a mano.</p>'+
+    '</div>';
     return;
   }
   cont.innerHTML = ses.map(cardSesion).join('');
   enlazarCardSesiones(cont);
 }
-function kpi(v,l){ return '<div class="kpi"><b>'+v+'</b><span>'+l+'</span></div>'; }
+function kpi(v,l,k){ return '<div class="kpi'+(k?' '+k:'')+'"><b>'+v+'</b><span>'+l+'</span></div>'; }
 
 function cardSesion(s){
   const p = pacientePorId(s.pacienteId);
