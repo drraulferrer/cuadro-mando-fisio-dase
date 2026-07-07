@@ -322,6 +322,22 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
   </div>
 
   <div class="grid-resumen" id="resumenDia"></div>
+
+  <div class="card" id="filtrosDia" style="padding:10px 14px" hidden>
+    <div class="fila-botones">
+      <input type="search" id="buscaDia" placeholder="Buscar paciente en el día…" aria-label="Buscar paciente en el día"
+             style="flex:1; min-width:150px; border:1px solid var(--borde); border-radius:8px; padding:8px 12px">
+      <span class="seg" role="group" aria-label="Qué pacientes ver">
+        <button id="vTodos" class="a on">Todos</button>
+        <button id="vPend" class="a">Pendientes</button>
+      </span>
+      <span class="seg" role="group" aria-label="Orden">
+        <button id="oHora" class="a on">Por hora</button>
+        <button id="oNombre" class="a">Por nombre</button>
+      </span>
+    </div>
+  </div>
+
   <div id="listaDia"></div>
 </section>
 
@@ -500,6 +516,20 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
     <div class="pie">
       <button class="btn peligro" id="btnQuitarFoto">Quitar foto de este día</button>
       <button class="btn" data-cerrar>Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalNombre" role="dialog" aria-modal="true" aria-labelledby="tituloNombre">
+  <div class="caja" style="max-width:460px">
+    <h2 id="tituloNombre">Corregir nombre</h2>
+    <p class="suave" style="font-size:13px; margin:0 0 8px">Se corrige en todo el historial. Si el nombre corregido ya existe, se fusionan los historiales.</p>
+    <div class="campo"><label for="nmInput">Nombre y apellidos</label>
+      <input type="text" id="nmInput" autocomplete="off">
+    </div>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cancelar</button>
+      <button class="btn primario" id="nmGuardar">Guardar</button>
     </div>
   </div>
 </div>
@@ -816,6 +846,8 @@ $('#fechaDia').addEventListener('change', e=>{
 /* =====================================================================
    AGENDA DEL DÍA
    ===================================================================== */
+let diaVista = 'todos';    // todos | pendientes
+let diaOrden = 'hora';     // hora | nombre
 function renderDia(){
   // foto
   const foto = FOTOS[fechaActual];
@@ -830,14 +862,37 @@ function renderDia(){
   $('#resumenDia').innerHTML =
     kpi(ses.length,'Citas')+kpi(nSi,'Han venido')+kpi(nNo,'No han venido')+kpi(nPen,'Pendientes');
 
+  $('#filtrosDia').hidden = !ses.length;
   const cont = $('#listaDia');
   if(!ses.length){
     cont.innerHTML = '<div class="card vacio">No hay pacientes en este día.<br>Sube la foto de la hoja o añade pacientes a mano.</div>';
     return;
   }
-  cont.innerHTML = ses.map(cardSesion).join('');
+  // filtro de vista, búsqueda y orden
+  let visibles = ses;
+  if(diaVista==='pendientes') visibles = visibles.filter(s=>s.asistencia==='pendiente');
+  const q = norm($('#buscaDia').value);
+  if(q) visibles = visibles.filter(s=>norm(nombreDe(s)).includes(q));
+  if(diaOrden==='nombre') visibles = [...visibles].sort((a,b)=>nombreDe(a).localeCompare(nombreDe(b),'es'));
+  const ocultos = ses.length - visibles.length;
+
+  let h = '';
+  if(!visibles.length){
+    h = '<div class="card vacio">'+(q
+      ? 'Nadie coincide con la búsqueda.'
+      : (diaVista==='pendientes' ? 'No queda nadie pendiente: todos marcados. 🎉' : 'Nada que mostrar.'))+'</div>';
+  } else {
+    if(ocultos) h += '<p class="suave" style="font-size:13px; margin:0 0 8px">'+ocultos+' paciente'+(ocultos===1?'':'s')+' oculto'+(ocultos===1?'':'s')+' por el filtro.</p>';
+    h += visibles.map(cardSesion).join('');
+  }
+  cont.innerHTML = h;
   enlazarCardSesiones(cont);
 }
+$('#buscaDia').addEventListener('input', renderDia);
+$('#vTodos').addEventListener('click', ()=>{ diaVista='todos'; $('#vTodos').classList.add('on'); $('#vPend').classList.remove('on'); renderDia(); });
+$('#vPend').addEventListener('click', ()=>{ diaVista='pendientes'; $('#vPend').classList.add('on'); $('#vTodos').classList.remove('on'); renderDia(); });
+$('#oHora').addEventListener('click', ()=>{ diaOrden='hora'; $('#oHora').classList.add('on'); $('#oNombre').classList.remove('on'); renderDia(); });
+$('#oNombre').addEventListener('click', ()=>{ diaOrden='nombre'; $('#oNombre').classList.add('on'); $('#oHora').classList.remove('on'); renderDia(); });
 function kpi(v,l){ return '<div class="kpi"><b>'+v+'</b><span>'+l+'</span></div>'; }
 
 function cardSesion(s){
@@ -847,7 +902,8 @@ function cardSesion(s){
   let h = '<div class="card pac '+claseAsis+'" data-sid="'+s.id+'">';
   h += '<div class="pac-cab">';
   h += '<span class="estado-dot" aria-hidden="true"></span>';
-  h += '<span class="nombre"><a href="#" data-a="ficha">'+esc(nombreDe(s))+'</a></span>';
+  h += '<span class="nombre"><a href="#" data-a="ficha">'+esc(nombreDe(s))+'</a> ';
+  h += '<button data-a="edit-nombre" title="Corregir nombre" aria-label="Corregir nombre" style="border:0; background:none; font-size:13px; padding:2px 4px; cursor:pointer">✏️</button></span>';
   const edadPac = p ? edadDe(p.fnac, s.fecha) : null;
   if(edadPac!=null) h += '<span class="chip gris" title="Fecha de nacimiento: '+fmtFecha(p.fnac)+'">'+edadPac+' a</span>';
   if(s.primera) h += '<span class="chip azul">1ª sesión</span>';
@@ -946,6 +1002,7 @@ function enlazarCardSesiones(cont){
     const s = S.sesiones.find(x=>x.id===card.dataset.sid); if(!s) return;
     const a = btn.dataset.a;
     if(a==='ficha'){ ev.preventDefault(); abrirFicha(s.pacienteId); return; }
+    if(a==='edit-nombre'){ abrirEditarNombre(s.pacienteId); return; }
     if(a==='step'){
       const e = s.ejercicios[+btn.dataset.i]; if(!e) return;
       const f = btn.dataset.f;
@@ -990,6 +1047,39 @@ function enlazarCardSesiones(cont){
     guardar();
   };
 }
+
+/* ---- corregir nombre (errores del OCR); fusiona historiales si ya existe ---- */
+let renombrarPacienteId = null;
+function abrirEditarNombre(pid){
+  const p = pacientePorId(pid); if(!p) return;
+  renombrarPacienteId = pid;
+  $('#nmInput').value = p.nombre;
+  abrirModal('modalNombre');
+  setTimeout(()=>{ $('#nmInput').focus(); $('#nmInput').select(); }, 50);
+}
+$('#nmGuardar').addEventListener('click', async ()=>{
+  const p = pacientePorId(renombrarPacienteId); if(!p) return;
+  const nuevo = $('#nmInput').value.trim();
+  if(!nuevo){ toast('Escribe el nombre'); return; }
+  const otro = pacientePorNombre(nuevo);
+  if(otro && otro.id!==p.id){
+    cerrarModales();
+    if(!(await confirmar('Ya existe «'+otro.nombre+'». ¿Fusionar este paciente y todo su historial con ese?'))) return;
+    S.sesiones.forEach(s=>{ if(s.pacienteId===p.id) s.pacienteId = otro.id; });
+    otro.tis4 = otro.tis4 || p.tis4;
+    otro.cias = otro.cias || p.cias;
+    otro.fnac = otro.fnac || p.fnac;
+    otro.alta = otro.alta || p.alta;
+    S.pacientes = S.pacientes.filter(x=>x.id!==p.id);
+    if(fichaPacienteId===p.id) fichaPacienteId = otro.id;
+    toast('Historiales fusionados en «'+otro.nombre+'»');
+  } else {
+    p.nombre = nuevo;
+    cerrarModales();
+  }
+  guardar(); renderDia();
+  if(!$('#tab-pacientes').hidden) renderPacientes();
+});
 
 /* ---- selector de ejercicios (sin teclado) ---- */
 let pickerSesionId = null;
@@ -1557,7 +1647,7 @@ function renderFicha(){
   h += '<div class="fila-botones" style="justify-content:space-between">';
   h += '<button class="btn mini" data-a="volver">← Pacientes</button>';
   h += '<span></span></div>';
-  h += '<h2 style="font-size:20px; margin:10px 0 4px">'+esc(p.nombre)+'</h2>';
+  h += '<h2 style="font-size:20px; margin:10px 0 4px">'+esc(p.nombre)+' <button data-a="edit-nombre" title="Corregir nombre" aria-label="Corregir nombre" style="border:0; background:none; font-size:15px; cursor:pointer">✏️</button></h2>';
   h += '<p class="suave" style="margin:0 0 10px; font-size:14px">Inicio: '+fmtFecha(f1)+' · '+asistidas.length+' sesiones realizadas'+(noAsist?(' · '+noAsist+' no asistencias'):'')+'</p>';
   h += '<div class="fila-botones" style="margin-bottom:10px">';
   h += '<span class="chip azul" id="codigoPac" title="Código pseudoanónimo (iniciales + 4 últimos del TIS)">Código: '+esc(codigoPaciente(p))+'</span>';
@@ -1624,6 +1714,7 @@ function renderFicha(){
     const btn = ev.target.closest('[data-a]'); if(!btn) return;
     const a = btn.dataset.a;
     if(a==='volver'){ fichaPacienteId=null; renderPacientes(); }
+    else if(a==='edit-nombre') abrirEditarNombre(p.id);
     else if(a==='historial') abrirInforme('Historial — '+p.nombre, informeHistorial(p));
     else if(a==='informe-alta') abrirInforme('Informe de alta — '+p.nombre, informeAlta(p));
     else if(a==='alta') abrirAlta(p.id);
