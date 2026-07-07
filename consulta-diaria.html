@@ -262,10 +262,25 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
 #txtInforme{min-height:300px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 
 /* ---- OCR ---- */
-.ocr-linea{display:flex; gap:8px; align-items:center; margin-bottom:6px}
-.ocr-linea input[type=text]{flex:1}
-.ocr-linea input[type=time]{width:100px}
+#modalOCR .caja{max-width:min(960px, 96vw)}
+.ocr-linea{
+  display:flex; flex-wrap:wrap; gap:10px 12px; align-items:flex-end;
+  padding:12px; border:1px solid var(--borde); border-radius:10px; margin-bottom:10px;
+}
+.ocr-linea .chk{align-self:center}
+.ocr-linea .chk input{width:20px; height:20px; accent-color:var(--azul)}
+.ocr-campo{display:flex; flex-direction:column; gap:4px; min-width:0}
+.ocr-campo>span{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--texto-suave)}
+.ocr-campo input, .ocr-campo select{width:100%; border:1px solid var(--borde); border-radius:7px; padding:8px 9px; font-variant-numeric:tabular-nums}
+.ocr-campo.ord{flex:0 0 58px}
+.ocr-campo.tipo{flex:0 0 92px}
+.ocr-campo.nombre{flex:4 1 220px}
+.ocr-campo.hora{flex:0 0 110px}
+.ocr-campo.tis{flex:1 1 120px}
+.ocr-campo.cias{flex:1 1 160px}
+.ocr-campo.fnac{flex:1 1 160px}
 #ocrProgreso{font-size:13.5px; color:var(--texto-suave); margin:8px 0}
+#ocrLineas{max-height:62vh; overflow:auto; margin-right:-4px; padding-right:4px}
 
 /* ---- aviso flotante ---- */
 #toast{
@@ -1277,18 +1292,16 @@ $('#btnOCR').addEventListener('click', async ()=>{
     ocrResultados = await escanearFoto(p=>prog.textContent='Leyendo la hoja… '+p);
     prog.textContent = ocrResultados.length ? 'Se han detectado '+ocrResultados.length+' líneas:' : 'No se ha detectado texto legible. Añade los pacientes a mano mirando la foto.';
     $('#ocrLineas').innerHTML = ocrResultados.map((r,i)=>
-      '<div class="ocr-linea" style="flex-wrap:wrap">'+
-      '<input type="checkbox" data-i="'+i+'"'+(r.probable?' checked':'')+'>'+
-      '<input type="text" data-i="'+i+'" data-f="ord" value="'+esc(r.ord||'')+'" placeholder="Ord" aria-label="Nº de orden" style="width:48px; text-align:center; border:1px solid var(--borde); border-radius:7px; padding:8px 4px">'+
-      '<select data-i="'+i+'" data-f="tipo" aria-label="Tipo de cita" style="width:70px; border:1px solid var(--borde); border-radius:7px; padding:8px 4px">'+
-        ['','V','SES','TEL'].map(v=>'<option value="'+v+'"'+(r.tipo===v?' selected':'')+'>'+(v||'—')+'</option>').join('')+'</select>'+
-      '<input type="text" data-i="'+i+'" data-f="nombre" value="'+esc(r.nombre)+'">'+
-      '<input type="time" data-i="'+i+'" data-f="hora" value="'+esc(r.hora)+'">'+
-      '<span style="flex-basis:100%; display:flex; gap:8px; padding-left:26px">'+
-        '<input type="text" data-i="'+i+'" data-f="tis" inputmode="numeric" value="'+esc(r.tis||'')+'" placeholder="TIS (4 últ.)" aria-label="TIS, 4 últimos dígitos" style="width:96px; border:1px solid var(--borde); border-radius:7px; padding:6px 8px">'+
-        '<input type="text" data-i="'+i+'" data-f="cias" value="'+esc(r.cias||'')+'" placeholder="CIAS médico" aria-label="CIAS del médico" style="width:130px; border:1px solid var(--borde); border-radius:7px; padding:6px 8px">'+
-        '<input type="date" data-i="'+i+'" data-f="fnac" value="'+esc(r.fnac||'')+'" aria-label="Fecha de nacimiento" style="border:1px solid var(--borde); border-radius:7px; padding:6px 8px">'+
-      '</span>'+
+      '<div class="ocr-linea">'+
+      '<label class="chk" title="Incluir esta línea"><input type="checkbox" data-i="'+i+'"'+(r.probable?' checked':'')+'></label>'+
+      '<label class="ocr-campo ord"><span>Ord</span><input type="text" data-i="'+i+'" data-f="ord" value="'+esc(r.ord||'')+'"></label>'+
+      '<label class="ocr-campo tipo"><span>Tipo</span><select data-i="'+i+'" data-f="tipo">'+
+        ['','V','SES','TEL'].map(v=>'<option value="'+v+'"'+(r.tipo===v?' selected':'')+'>'+(v||'—')+'</option>').join('')+'</select></label>'+
+      '<label class="ocr-campo nombre"><span>Nombre y apellidos</span><input type="text" data-i="'+i+'" data-f="nombre" value="'+esc(r.nombre)+'"></label>'+
+      '<label class="ocr-campo hora"><span>Hora</span><input type="time" data-i="'+i+'" data-f="hora" value="'+esc(r.hora)+'"></label>'+
+      '<label class="ocr-campo tis"><span>TIS (4 últ.)</span><input type="text" data-i="'+i+'" data-f="tis" inputmode="numeric" value="'+esc(r.tis||'')+'"></label>'+
+      '<label class="ocr-campo cias"><span>CIAS médico</span><input type="text" data-i="'+i+'" data-f="cias" value="'+esc(r.cias||'')+'"></label>'+
+      '<label class="ocr-campo fnac"><span>F. nacimiento</span><input type="date" data-i="'+i+'" data-f="fnac" value="'+esc(r.fnac||'')+'"></label>'+
       '</div>').join('');
     $('#ocrAdd').disabled = !ocrResultados.length;
   }catch(e){
