@@ -100,7 +100,10 @@ diario con pacientes en la consulta:
    de **tipo de cita** (valoración / sesión / telefónica), visible en la agenda, editable, e
    incluida en informes y en el Excel. También extrae, revisables antes de añadir: los **4 últimos
    dígitos del TIS**, el **CIAS del médico derivador** (para estadísticas de derivación) y la
-   **fecha de nacimiento**, de la que calcula la **edad** que se muestra junto al nombre.
+   **fecha de nacimiento**, de la que calcula la **edad** que se muestra junto al nombre. El
+   directorio **CIAS → médico / centro** (Entrevías / El Pozo) se edita en la pestaña *Datos*, se
+   guarda **aparte** y **se conserva aunque se borren todos los datos** (para no volver a
+   identificar los CIAS ya conocidos).
    Botón **«Resetear captura»** para vaciar las citas del día y empezar de cero (y el OCR nunca
    duplica a un paciente que ya esté en el día).
 2. **Asistencia con hora** — marca «Viene / No viene»; al marcar «Viene» se registra la **hora de
