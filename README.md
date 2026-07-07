@@ -103,7 +103,10 @@ diario con pacientes en la consulta:
    Botón **«Resetear captura»** para vaciar las citas del día y empezar de cero (y el OCR nunca
    duplica a un paciente que ya esté en el día).
 2. **Asistencia con hora** — marca «Viene / No viene»; al marcar «Viene» se registra la **hora de
-   llegada** automáticamente (editable).
+   llegada** automáticamente (editable). La agenda va **ordenada por hora** (con opción de orden
+   alfabético), tiene **buscador por nombre**, y una vista **«Pendientes»** que oculta a los ya
+   marcados para ver solo lo que queda. El **nombre se corrige con el lápiz (✏️)** — errores del
+   OCR — y si el nombre corregido ya existía, se **fusionan los historiales**.
 3. **Registro de la sesión** — evolución (**mejor / igual / peor**), cumplimiento de la **pauta de
    tratamiento** (sí / parcial / no) y **ejercicios pautados**: tantos como quieras, cada uno con
    tipo, series, repeticiones, descanso y carga/notas. Botón para **repetir los ejercicios de la
