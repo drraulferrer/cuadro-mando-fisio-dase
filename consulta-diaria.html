@@ -420,10 +420,10 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
     </div>
     <div class="campo"><label for="mpTipo">Tipo de cita</label>
       <select id="mpTipo">
-        <option value="">—</option>
+        <option value="SES" selected>SES · Sesión de tratamiento</option>
         <option value="V">V · Valoración</option>
-        <option value="SES">SES · Sesión de tratamiento</option>
         <option value="TEL">TEL · Consulta telefónica</option>
+        <option value="">—</option>
       </select>
     </div>
     <div class="campo">
@@ -657,7 +657,7 @@ function numeroDeSesion(ses){
 function nuevaSesion(pacienteId, fecha, horaCita, primera){
   const ses = {
     id:uid(), pacienteId, fecha, horaCita:horaCita||'',
-    tipoCita:'',                       // '' | V | SES | TEL
+    tipoCita:'SES',                    // '' | V | SES | TEL (SES por defecto)
     asistencia:'pendiente',            // pendiente | si | no
     horaLlegada:null, primera:!!primera,
     evolucion:null,                    // mejor | igual | peor
@@ -1126,7 +1126,7 @@ $('#ejOtro').addEventListener('click', ()=>{
 
 /* ---- añadir paciente a mano ---- */
 $('#btnAddPaciente').addEventListener('click', ()=>{
-  $('#mpNombre').value=''; $('#mpTis').value=''; $('#mpHora').value=''; $('#mpTipo').value=''; $('#mpPrimera').checked=false;
+  $('#mpNombre').value=''; $('#mpTis').value=''; $('#mpHora').value=''; $('#mpTipo').value='SES'; $('#mpPrimera').checked=false;
   $('#dlPacientes').innerHTML = S.pacientes.map(p=>'<option value="'+esc(p.nombre)+'">').join('');
   abrirModal('modalPaciente');
   setTimeout(()=>$('#mpNombre').focus(), 50);
@@ -1227,8 +1227,8 @@ function parsearLineaOCR(linea){
   const m = t.match(/([01]?\d|2[0-3])[:.hH]([0-5]\d)/);
   if(m){ hora = m[1].padStart(2,'0')+':'+m[2]; t = t.replace(m[0],' '); }
   t = t.replace(/[|_*#·•=~<>[\]{}]/g,' ').replace(/\s+/g,' ').trim();
-  // tipo de cita al inicio de la línea: V / SES / TEL (se quita del nombre y se guarda como etiqueta)
-  let tipo='';
+  // tipo de cita al inicio de la línea: SES por defecto; se ajusta a V/SES/TEL si aparece en la hoja
+  let tipo='SES';
   const mt = t.match(/^(V|SES|TEL)(?=[\s.:,;-]|$)[\s.:,;-]*/i);
   if(mt){ tipo = mt[1].toUpperCase(); t = t.slice(mt[0].length); }
   // fecha de nacimiento (dd/mm/aaaa) → edad del paciente
@@ -1293,7 +1293,7 @@ $('#ocrAdd').addEventListener('click', ()=>{
     const yaHoy = sesionesDelDia(fechaActual).some(s=>s.pacienteId===p.id);
     if(yaHoy) return;
     const ses = nuevaSesion(p.id, fechaActual, r.hora, false);
-    ses.tipoCita = TIPOS_CITA[r.tipo] ? r.tipo : '';
+    ses.tipoCita = TIPOS_CITA[r.tipo] ? r.tipo : 'SES';
     n++;
   });
   guardar(); cerrarModales(); renderDia();
