@@ -315,6 +315,7 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
           </label>
           <button class="btn" id="btnOCR" disabled>Leer nombres (OCR)</button>
           <button class="btn" id="btnAddPaciente">+ Añadir paciente</button>
+          <button class="btn peligro mini" id="btnVaciarDia" title="Quita todas las citas de este día para empezar la captura de cero">↺ Resetear captura</button>
         </div>
       </div>
     </div>
@@ -363,9 +364,9 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
     </p>
     <p class="suave" style="font-size:14px">
       Cada paciente tiene un <b>código pseudoanónimo</b>: iniciales del nombre y apellidos +
-      4 últimos dígitos del CIPA (p. ej. <b>MGL-1234</b>). El CIPA se introduce al añadir el
-      paciente o en su ficha. Con la casilla marcada, las copias y el Excel salen con el código
-      <b>en lugar del nombre</b>.
+      4 últimos dígitos del TIS (p. ej. <b>MGL-1234</b>). El TIS se introduce al añadir el
+      paciente, desde el OCR de la hoja o en su ficha. Con la casilla marcada, las copias y el
+      Excel salen con el código <b>en lugar del nombre</b>.
     </p>
     <label class="check" style="margin:4px 0 10px">
       <input type="checkbox" id="chkPseudo" checked>
@@ -395,8 +396,8 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
       <input type="text" id="mpNombre" list="dlPacientes" autocomplete="off">
       <datalist id="dlPacientes"></datalist>
     </div>
-    <div class="campo"><label for="mpCipa">CIPA — se guardan solo los 4 últimos dígitos (opcional)</label>
-      <input type="text" id="mpCipa" inputmode="numeric" autocomplete="off" placeholder="p. ej. 1234 (puedes pegar el CIPA completo)">
+    <div class="campo"><label for="mpTis">TIS — se guardan solo los 4 últimos dígitos (opcional)</label>
+      <input type="text" id="mpTis" inputmode="numeric" autocomplete="off" placeholder="p. ej. 1234 (puedes pegar el TIS completo)">
     </div>
     <div class="campo"><label for="mpHora">Hora de la cita</label>
       <input type="time" id="mpHora">
@@ -503,6 +504,16 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
   </div>
 </div>
 
+<div class="modal" id="modalConfirmar" role="dialog" aria-modal="true" aria-labelledby="txtConfirmar">
+  <div class="caja" style="max-width:440px">
+    <h2 id="txtConfirmar" style="font-size:15.5px; line-height:1.5; font-weight:550"></h2>
+    <div class="pie">
+      <button class="btn" id="confNo">Cancelar</button>
+      <button class="btn peligro" id="confSi">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" role="status"></div>
 
 <script>
@@ -529,6 +540,8 @@ let altaPacienteId = null;
 function cargar(){
   try{ const d = JSON.parse(localStorage.getItem(LS_DATOS)); if(d && d.pacientes) S = d; }catch(e){}
   try{ const f = JSON.parse(localStorage.getItem(LS_FOTOS)); if(f) FOTOS = f; }catch(e){}
+  // migración: el campo antes llamado CIPA pasa a ser TIS (mismos 4 últimos dígitos)
+  S.pacientes.forEach(p=>{ if(p.cipa4 && !p.tis4){ p.tis4 = p.cipa4; delete p.cipa4; } });
 }
 function guardar(){
   try{ localStorage.setItem(LS_DATOS, JSON.stringify(S)); }
@@ -556,10 +569,17 @@ function iniciales(nombre){
     .map(w=>w[0].normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase())
     .filter(c=>/[A-ZÑ]/.test(c)).join('');
 }
-function cipa4De(texto){ const d=(texto||'').replace(/\D/g,''); return d.slice(-4); }
+function tis4De(texto){ const d=(texto||'').replace(/\D/g,''); return d.slice(-4); }
 function codigoPaciente(p){
   const ini = iniciales(p.nombre) || 'XX';
-  return p.cipa4 ? ini+'-'+p.cipa4 : ini;
+  return p.tis4 ? ini+'-'+p.tis4 : ini;
+}
+function edadDe(fnac, refISO){
+  if(!fnac) return null;
+  const [a,m,d] = fnac.split('-').map(Number);
+  const [ra,rm,rd] = (refISO||hoyISO()).split('-').map(Number);
+  let e = ra-a; if(rm<m || (rm===m && rd<d)) e--;
+  return (e>=0 && e<120) ? e : null;
 }
 function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(msg){
@@ -828,6 +848,8 @@ function cardSesion(s){
   h += '<div class="pac-cab">';
   h += '<span class="estado-dot" aria-hidden="true"></span>';
   h += '<span class="nombre"><a href="#" data-a="ficha">'+esc(nombreDe(s))+'</a></span>';
+  const edadPac = p ? edadDe(p.fnac, s.fecha) : null;
+  if(edadPac!=null) h += '<span class="chip gris" title="Fecha de nacimiento: '+fmtFecha(p.fnac)+'">'+edadPac+' a</span>';
   if(s.primera) h += '<span class="chip azul">1ª sesión</span>';
   else if(n && s.asistencia==='si') h += '<span class="chip gris">Sesión '+n+'</span>';
   if(p && p.alta) h += '<span class="chip verde">Alta '+fmtFecha(p.alta.fecha)+'</span>';
@@ -853,6 +875,7 @@ function cardSesion(s){
 
   // detalle de sesión (solo si viene)
   if(s.asistencia==='si'){
+    if(s.tipoCita==='V') h += '<p class="suave" style="margin:10px 0 0; font-size:13px">Cita de valoración: se establece o ajusta el plan. Normalmente aún no hay evolución que registrar.</p>';
     h += '<div class="fila-campos">';
     h += '<div class="campo"><label>Evolución</label><span class="seg">';
     h += segBtn(s,'evolucion','mejor','v','Mejor')+segBtn(s,'evolucion','igual','i','Igual')+segBtn(s,'evolucion','peor','p','Peor');
@@ -917,7 +940,7 @@ function ejerciciosPrevios(s){
 }
 
 function enlazarCardSesiones(cont){
-  cont.onclick = ev=>{
+  cont.onclick = async ev=>{
     const btn = ev.target.closest('[data-a]'); if(!btn) return;
     const card = ev.target.closest('[data-sid]'); if(!card) return;
     const s = S.sesiones.find(x=>x.id===card.dataset.sid); if(!s) return;
@@ -951,7 +974,7 @@ function enlazarCardSesiones(cont){
     else if(a==='informe'){ abrirInforme('Informe de la sesión — '+nombreDe(s), informeSesion(s)); return; }
     else if(a==='alta'){ abrirAlta(s.pacienteId); return; }
     else if(a==='del-ses'){
-      if(!confirm('¿Quitar a '+nombreDe(s)+' de este día? (No borra su historial)')) return;
+      if(!(await confirmar('¿Quitar a '+nombreDe(s)+' de este día? No borra su historial de otros días.'))) return;
       S.sesiones = S.sesiones.filter(x=>x.id!==s.id);
     }
     guardar(); renderDia();
@@ -1013,7 +1036,7 @@ $('#ejOtro').addEventListener('click', ()=>{
 
 /* ---- añadir paciente a mano ---- */
 $('#btnAddPaciente').addEventListener('click', ()=>{
-  $('#mpNombre').value=''; $('#mpCipa').value=''; $('#mpHora').value=''; $('#mpTipo').value=''; $('#mpPrimera').checked=false;
+  $('#mpNombre').value=''; $('#mpTis').value=''; $('#mpHora').value=''; $('#mpTipo').value=''; $('#mpPrimera').checked=false;
   $('#dlPacientes').innerHTML = S.pacientes.map(p=>'<option value="'+esc(p.nombre)+'">').join('');
   abrirModal('modalPaciente');
   setTimeout(()=>$('#mpNombre').focus(), 50);
@@ -1023,8 +1046,8 @@ $('#mpGuardar').addEventListener('click', ()=>{
   const nombre = $('#mpNombre').value.trim();
   if(!nombre){ toast('Escribe el nombre del paciente'); return; }
   const p = crearOEncontrarPaciente(nombre);
-  const cipa = cipa4De($('#mpCipa').value);
-  if(cipa) p.cipa4 = cipa;
+  const tis = tis4De($('#mpTis').value);
+  if(tis) p.tis4 = tis;
   const ses = nuevaSesion(p.id, fechaActual, $('#mpHora').value, $('#mpPrimera').checked);
   ses.tipoCita = $('#mpTipo').value;
   guardar(); cerrarModales(); renderDia();
@@ -1080,12 +1103,17 @@ $('#btnOCR').addEventListener('click', async ()=>{
     ocrResultados = (data.text||'').split('\n').map(parsearLineaOCR).filter(Boolean);
     prog.textContent = ocrResultados.length ? 'Se han detectado '+ocrResultados.length+' líneas:' : 'No se ha detectado texto legible. Añade los pacientes a mano mirando la foto.';
     $('#ocrLineas').innerHTML = ocrResultados.map((r,i)=>
-      '<div class="ocr-linea">'+
+      '<div class="ocr-linea" style="flex-wrap:wrap">'+
       '<input type="checkbox" data-i="'+i+'"'+(r.probable?' checked':'')+'>'+
       '<select data-i="'+i+'" data-f="tipo" aria-label="Tipo de cita" style="width:70px; border:1px solid var(--borde); border-radius:7px; padding:8px 4px">'+
         ['','V','SES','TEL'].map(v=>'<option value="'+v+'"'+(r.tipo===v?' selected':'')+'>'+(v||'—')+'</option>').join('')+'</select>'+
       '<input type="text" data-i="'+i+'" data-f="nombre" value="'+esc(r.nombre)+'">'+
       '<input type="time" data-i="'+i+'" data-f="hora" value="'+esc(r.hora)+'">'+
+      '<span style="flex-basis:100%; display:flex; gap:8px; padding-left:26px">'+
+        '<input type="text" data-i="'+i+'" data-f="tis" inputmode="numeric" value="'+esc(r.tis||'')+'" placeholder="TIS (4 últ.)" aria-label="TIS, 4 últimos dígitos" style="width:96px; border:1px solid var(--borde); border-radius:7px; padding:6px 8px">'+
+        '<input type="text" data-i="'+i+'" data-f="cias" value="'+esc(r.cias||'')+'" placeholder="CIAS médico" aria-label="CIAS del médico" style="width:130px; border:1px solid var(--borde); border-radius:7px; padding:6px 8px">'+
+        '<input type="date" data-i="'+i+'" data-f="fnac" value="'+esc(r.fnac||'')+'" aria-label="Fecha de nacimiento" style="border:1px solid var(--borde); border-radius:7px; padding:6px 8px">'+
+      '</span>'+
       '</div>').join('');
     $('#ocrAdd').disabled = !ocrResultados.length;
   }catch(e){
@@ -1113,13 +1141,31 @@ function parsearLineaOCR(linea){
   let tipo='';
   const mt = t.match(/^(V|SES|TEL)(?=[\s.:,;-]|$)[\s.:,;-]*/i);
   if(mt){ tipo = mt[1].toUpperCase(); t = t.slice(mt[0].length); }
+  // fecha de nacimiento (dd/mm/aaaa) → edad del paciente
+  let fnac='';
+  const mf = t.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})\b/);
+  if(mf){
+    const dd=+mf[1], mm=+mf[2], aa=+mf[3];
+    if(aa>1900 && aa<=new Date().getFullYear() && dd>=1 && dd<=31 && mm>=1 && mm<=12){
+      fnac = aa+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
+      t = t.replace(mf[0],' ');
+    }
+  }
+  // CIAS del médico: dígitos con letra(s) final(es), p. ej. 1725104703B
+  let cias='';
+  const mc = t.match(/\b\d{5,12}[A-Z]{1,2}\b/i);
+  if(mc){ cias = mc[0].toUpperCase(); t = t.replace(mc[0],' '); }
+  // TIS: la racha de dígitos más larga que quede (≥8) → 4 últimos
+  let tis='';
+  const runs = t.match(/\d{8,}/g);
+  if(runs) tis = runs.sort((x,y)=>y.length-x.length)[0].slice(-4);
   // se queda solo con el nombre y apellidos: la racha más larga de palabras alfabéticas
   const nombre = extraerNombreOCR(t);
   if(!nombre) return null;
   const letras = (nombre.match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g)||[]).length;
   if(letras<4) return null;
   const probable = letras>=6 && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}[\s,]+.*[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}/.test(nombre);
-  return {nombre, hora, tipo, probable};
+  return {nombre, hora, tipo, tis, cias, fnac, probable};
 }
 const NO_NOMBRE = new Set(['nhc','cipa','dni','nif','nie','tel','tfno','telefono','teléfono','movil','móvil','sala','box','cias','hc','edad','cita','hora','obs','num','nº','ses']);
 function extraerNombreOCR(t){
@@ -1151,6 +1197,9 @@ $('#ocrAdd').addEventListener('click', ()=>{
   marcadas.forEach(r=>{
     const nombre = r.nombre.trim(); if(!nombre) return;
     const p = crearOEncontrarPaciente(nombre);
+    if(r.tis) p.tis4 = tis4De(r.tis);
+    if(r.cias) p.cias = r.cias.trim().toUpperCase();
+    if(r.fnac) p.fnac = r.fnac;
     const yaHoy = sesionesDelDia(fechaActual).some(s=>s.pacienteId===p.id);
     if(yaHoy) return;
     const ses = nuevaSesion(p.id, fechaActual, r.hora, false);
@@ -1343,6 +1392,24 @@ function renderStats(){
   const cuentaEj = {};
   hSi.forEach(s=>s.ejercicios.forEach(e=>{ const t=(e.tipo||'').trim(); if(t) cuentaEj[t]=(cuentaEj[t]||0)+1; }));
   const topEj = Object.entries(cuentaEj).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([label,n])=>({label,n}));
+  /* tipos de cita en el periodo */
+  const tiposCnt = {V:0, SES:0, TEL:0};
+  ses.forEach(s=>{ if(tiposCnt[s.tipoCita]!=null) tiposCnt[s.tipoCita]++; });
+  /* edad media de los pacientes atendidos (con fecha de nacimiento) */
+  const edades = [...new Set(hSi.map(s=>s.pacienteId))]
+    .map(id=>{ const p=pacientePorId(id); return p?edadDe(p.fnac):null; })
+    .filter(e=>e!=null);
+  const edadMedia = edades.length ? Math.round(edades.reduce((t,e)=>t+e,0)/edades.length) : null;
+  /* derivaciones: pacientes nuevos en el periodo por CIAS del médico */
+  const derivMap = {};
+  S.pacientes.forEach(p=>{
+    if(!p.cias) return;
+    const prim = sesionesDePaciente(p.id)[0];
+    if(!prim) return;
+    if(desde && prim.fecha<desde) return;
+    derivMap[p.cias] = (derivMap[p.cias]||0)+1;
+  });
+  const itemsCias = Object.entries(derivMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([label,n])=>({label,n}));
   const etiquetaPeriodo = statsSemanas ? 'últimas '+statsSemanas+' semanas' : 'todo el histórico';
 
   const SEG_EV = [{label:'Mejor',n:0,color:C_VERDE},{label:'Igual',n:0,color:C_NEUTRO},{label:'Peor',n:0,color:C_ROJO}];
@@ -1385,8 +1452,9 @@ function renderStats(){
   h += tile('Asistencia', asisTot ? pctDe(hSi.length, asisTot)+'%' : '—', hNo.length+' ausencia'+(hNo.length===1?'':'s'));
   h += tile('Efectividad clínica', evTot ? pctDe(hEv.mejor, evTot)+'%' : '—', evTot ? 'con mejoría ('+hEv.mejor+' de '+evTot+' valoradas)' : 'sin valoraciones');
   h += tile('Pauta completa', paTot ? pctDe(hPa.si, paTot)+'%' : '—', paTot ? 'parcial '+pctDe(hPa.parcial,paTot)+'% · no '+pctDe(hPa.no,paTot)+'%' : 'sin registros');
-  h += tile('Pacientes atendidos', pacAtendidos, enTratamiento+' en tratamiento ahora');
+  h += tile('Pacientes atendidos', pacAtendidos, enTratamiento+' en tratamiento ahora'+(edadMedia!=null?(' · edad media '+edadMedia+' años'):''));
   h += tile('Altas', altas.length, mediaSesAlta ? 'media '+mediaSesAlta+' sesiones por alta' : '');
+  h += tile('Valoraciones (V)', tiposCnt.V, 'SES '+tiposCnt.SES+' · TEL '+tiposCnt.TEL);
   h += '</div>';
 
   h += '<div class="grafico"><h3>Actividad por semana</h3><p class="sub">Sesiones realizadas y ausencias (semana del lunes indicado)</p>';
@@ -1408,6 +1476,11 @@ function renderStats(){
   h += '<div class="grafico"><h3>Estado al alta</h3><p class="sub">'+(altas.length? altas.length+' alta'+(altas.length===1?'':'s')+' en el periodo' : 'Sin altas en el periodo')+'</p>';
   h += barrasH(itemsAlta);
   if(itemsAlta.length) h += tablaChart(['Estado al alta','Pacientes'], itemsAlta.map(i=>[i.label, i.n]));
+  h += '</div>';
+
+  h += '<div class="grafico"><h3>Derivaciones por médico (CIAS)</h3><p class="sub">Pacientes nuevos en el periodo según el CIAS de la hoja</p>';
+  h += barrasH(itemsCias);
+  if(itemsCias.length) h += tablaChart(['CIAS','Pacientes nuevos'], itemsCias.map(i=>[i.label, i.n]));
   h += '</div>';
 
   h += '<div class="grafico"><h3>Ejercicios más pautados</h3><p class="sub">Veces que aparece cada ejercicio en las sesiones realizadas</p>';
@@ -1487,8 +1560,12 @@ function renderFicha(){
   h += '<h2 style="font-size:20px; margin:10px 0 4px">'+esc(p.nombre)+'</h2>';
   h += '<p class="suave" style="margin:0 0 10px; font-size:14px">Inicio: '+fmtFecha(f1)+' · '+asistidas.length+' sesiones realizadas'+(noAsist?(' · '+noAsist+' no asistencias'):'')+'</p>';
   h += '<div class="fila-botones" style="margin-bottom:10px">';
-  h += '<span class="chip azul" id="codigoPac" title="Código pseudoanónimo (iniciales + 4 últimos del CIPA)">Código: '+esc(codigoPaciente(p))+'</span>';
-  h += '<label class="check">CIPA (4 últimos) <input type="text" data-f="cipa4" inputmode="numeric" value="'+esc(p.cipa4||'')+'" placeholder="1234" style="width:110px; border:1px solid var(--borde); border-radius:7px; padding:4px 8px"></label>';
+  h += '<span class="chip azul" id="codigoPac" title="Código pseudoanónimo (iniciales + 4 últimos del TIS)">Código: '+esc(codigoPaciente(p))+'</span>';
+  h += '<label class="check">TIS (4 últimos) <input type="text" data-f="tis4" inputmode="numeric" value="'+esc(p.tis4||'')+'" placeholder="1234" style="width:100px; border:1px solid var(--borde); border-radius:7px; padding:4px 8px"></label>';
+  const edadFicha = edadDe(p.fnac);
+  h += '<label class="check">F. nacimiento <input type="date" data-f="fnac" value="'+esc(p.fnac||'')+'" style="border:1px solid var(--borde); border-radius:7px; padding:4px 8px"></label>';
+  if(edadFicha!=null) h += '<span class="chip gris">'+edadFicha+' años</span>';
+  h += '<label class="check">CIAS (médico) <input type="text" data-f="cias" value="'+esc(p.cias||'')+'" placeholder="p. ej. 1725104703B" style="width:140px; border:1px solid var(--borde); border-radius:7px; padding:4px 8px"></label>';
   h += '</div>';
   h += '<div class="fila-botones">';
   h += '<span class="chip verde">Mejor: '+ev.mejor+'</span><span class="chip ambar">Igual: '+ev.igual+'</span><span class="chip rojo">Peor: '+ev.peor+'</span>';
@@ -1531,13 +1608,19 @@ function renderFicha(){
   cont.innerHTML = h;
 
   cont.onchange = ev=>{
-    const el = ev.target.closest('[data-f=cipa4]'); if(!el) return;
-    p.cipa4 = cipa4De(el.value);
-    el.value = p.cipa4;
-    $('#codigoPac').textContent = 'Código: '+codigoPaciente(p);
+    const el = ev.target.closest('[data-f]'); if(!el) return;
+    const f = el.dataset.f;
+    if(f==='tis4'){
+      p.tis4 = tis4De(el.value);
+      el.value = p.tis4;
+      $('#codigoPac').textContent = 'Código: '+codigoPaciente(p);
+    }
+    else if(f==='fnac'){ p.fnac = el.value; guardar(); renderFicha(); return; }
+    else if(f==='cias'){ p.cias = el.value.trim().toUpperCase(); el.value = p.cias; }
+    else return;
     guardar();
   };
-  cont.onclick = ev=>{
+  cont.onclick = async ev=>{
     const btn = ev.target.closest('[data-a]'); if(!btn) return;
     const a = btn.dataset.a;
     if(a==='volver'){ fichaPacienteId=null; renderPacientes(); }
@@ -1546,7 +1629,7 @@ function renderFicha(){
     else if(a==='alta') abrirAlta(p.id);
     else if(a==='reabrir'){ p.alta=null; guardar(); renderFicha(); toast('Alta anulada; el paciente vuelve a estar en tratamiento'); }
     else if(a==='borrar-pac'){
-      if(!confirm('¿Borrar a '+p.nombre+' y TODAS sus sesiones? Esta acción no se puede deshacer.')) return;
+      if(!(await confirmar('¿Borrar a '+p.nombre+' y TODAS sus sesiones? Esta acción no se puede deshacer.'))) return;
       S.pacientes = S.pacientes.filter(x=>x.id!==p.id);
       S.sesiones = S.sesiones.filter(x=>x.pacienteId!==p.id);
       guardar(); fichaPacienteId=null; renderPacientes();
@@ -1601,10 +1684,10 @@ function renderCopia(){
   let bytes = 0;
   try{ bytes = (localStorage.getItem(LS_DATOS)||'').length + (localStorage.getItem(LS_FOTOS)||'').length; }catch(e){}
   const nFotos = Object.keys(FOTOS).length;
-  const sinCipa = S.pacientes.filter(p=>!p.cipa4).length;
-  $('#avisoCipa').textContent = sinCipa
-    ? '⚠️ '+sinCipa+' paciente'+(sinCipa===1?'':'s')+' sin CIPA registrado: su código serán solo las iniciales (menos identificable de forma única). Se añade desde la ficha del paciente.'
-    : (S.pacientes.length ? 'Todos los pacientes tienen CIPA registrado.' : '');
+  const sinTis = S.pacientes.filter(p=>!p.tis4).length;
+  $('#avisoCipa').textContent = sinTis
+    ? '⚠️ '+sinTis+' paciente'+(sinTis===1?'':'s')+' sin TIS registrado: su código serán solo las iniciales (menos identificable de forma única). Se añade desde la ficha del paciente.'
+    : (S.pacientes.length ? 'Todos los pacientes tienen TIS registrado.' : '');
   $('#usoAlmacen').textContent =
     S.pacientes.length+' pacientes · '+S.sesiones.length+' sesiones · '+nFotos+' fotos guardadas · '+
     'ocupación aproximada: '+(bytes/1024/1024).toFixed(1)+' MB (límite habitual del navegador: ~5 MB).';
@@ -1645,7 +1728,10 @@ function filasExport(pseudo){
   const pacientes = S.pacientes.map(p=>{
     const ses = sesionesDePaciente(p.id);
     return Object.assign(et(p), {
-      'CIPA (4 últimos)': p.cipa4||'',
+      'TIS (4 últimos)': p.tis4||'',
+      'F. nacimiento': p.fnac ? fmtFecha(p.fnac) : '',
+      'Edad': edadDe(p.fnac)!=null ? edadDe(p.fnac) : '',
+      'CIAS (médico)': p.cias||'',
       'Inicio tratamiento': fmtFecha(primeraSesionFecha(p.id)),
       'Sesiones realizadas': ses.filter(s=>s.asistencia==='si').length,
       'No asistencias': ses.filter(s=>s.asistencia==='no').length,
@@ -1713,38 +1799,66 @@ $('#inputImportar').addEventListener('change', ev=>{
   const file = ev.target.files[0]; ev.target.value='';
   if(!file) return;
   const fr = new FileReader();
-  fr.onload = ()=>{
+  fr.onload = async ()=>{
     try{
       const d = JSON.parse(fr.result);
       if(!Array.isArray(d.pacientes) || !Array.isArray(d.sesiones)) throw new Error('formato');
-      if(!confirm('Se reemplazarán los datos actuales ('+S.pacientes.length+' pacientes) por los de la copia ('+d.pacientes.length+' pacientes). ¿Continuar?')) return;
+      if(!(await confirmar('Se reemplazarán los datos actuales ('+S.pacientes.length+' pacientes) por los de la copia ('+d.pacientes.length+' pacientes). ¿Continuar?'))) return;
       S = { version:1, pacientes:d.pacientes, sesiones:d.sesiones };
+      S.pacientes.forEach(p=>{ if(p.cipa4 && !p.tis4){ p.tis4 = p.cipa4; delete p.cipa4; } });   // copias antiguas (CIPA)
       guardar(); renderCopia(); renderDia();
       toast('Copia importada correctamente');
     }catch(e){ toast('El archivo no es una copia válida de esta aplicación'); }
   };
   fr.readAsText(file);
 });
-$('#btnBorrarFotos').addEventListener('click', ()=>{
+$('#btnBorrarFotos').addEventListener('click', async ()=>{
   const claves = Object.keys(FOTOS).filter(f=>f!==fechaActual);
   if(!claves.length){ toast('No hay fotos de otros días'); return; }
-  if(!confirm('¿Borrar las fotos de '+claves.length+' día'+(claves.length===1?'':'s')+' (se conserva la del día seleccionado)? Los datos de pacientes no se tocan.')) return;
+  if(!(await confirmar('¿Borrar las fotos de '+claves.length+' día'+(claves.length===1?'':'s')+'? Se conserva la del día seleccionado y los datos de pacientes no se tocan.'))) return;
   claves.forEach(f=>delete FOTOS[f]);
   guardarFotos(); renderCopia(); toast('Fotos antiguas borradas');
 });
-$('#btnBorrarTodo').addEventListener('click', ()=>{
-  if(!confirm('¿Borrar TODOS los datos de la aplicación en este navegador? Esta acción no se puede deshacer.')) return;
-  if(!confirm('Última confirmación: se borrarán pacientes, sesiones y fotos. ¿Seguro?')) return;
+$('#btnBorrarTodo').addEventListener('click', async ()=>{
+  if(!(await confirmar('Se borrarán TODOS los datos de la aplicación en este navegador: pacientes, sesiones y fotos. Esta acción no se puede deshacer. ¿Seguro?'))) return;
   localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_FOTOS);
   S = { version:1, pacientes:[], sesiones:[] }; FOTOS = {};
   renderCopia(); renderDia(); toast('Datos borrados');
+});
+$('#btnVaciarDia').addEventListener('click', async ()=>{
+  const ses = sesionesDelDia(fechaActual);
+  if(!ses.length){ toast('Este día ya está vacío'); return; }
+  if(!(await confirmar('¿Resetear la captura? Se quitan las '+ses.length+' citas de este día para empezar de cero. Las sesiones de otros días no se tocan.'))) return;
+  const ids = new Set(ses.map(s=>s.id));
+  S.sesiones = S.sesiones.filter(s=>!ids.has(s.id));
+  // pacientes creados por esta captura que quedan sin ninguna sesión ni alta
+  S.pacientes = S.pacientes.filter(p=>sesionesDePaciente(p.id).length || p.alta);
+  guardar(); renderDia(); toast('Captura reseteada: el día está vacío');
 });
 
 /* =====================================================================
    MODALES
    ===================================================================== */
 function abrirModal(id){ $('#'+id).classList.add('abierto'); }
-function cerrarModales(){ $$('.modal').forEach(m=>m.classList.remove('abierto')); }
+function cerrarModales(){
+  $$('.modal').forEach(m=>m.classList.remove('abierto'));
+  if(confResolver){ const r=confResolver; confResolver=null; r(false); }
+}
+/* Confirmación propia: window.confirm() puede quedar suprimido en Safari/iPad */
+let confResolver = null;
+function confirmar(msg){
+  return new Promise(res=>{
+    confResolver = res;
+    $('#txtConfirmar').textContent = msg;
+    abrirModal('modalConfirmar');
+  });
+}
+$('#confSi').addEventListener('click', ()=>{
+  const r = confResolver; confResolver = null;
+  cerrarModales();
+  if(r) r(true);
+});
+$('#confNo').addEventListener('click', ()=>cerrarModales());
 $$('.modal').forEach(m=>{
   m.addEventListener('click', ev=>{
     if(ev.target===m || ev.target.closest('[data-cerrar]')) cerrarModales();
