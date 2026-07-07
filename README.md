@@ -114,8 +114,11 @@ diario con pacientes en la consulta:
    **catálogo tocable** (con los usados con frecuencia primero, aprendidos de tu propio registro),
    las series/repeticiones se ajustan con **− / +**, el descanso es un desplegable y las
    observaciones tienen **frases rápidas** de un toque (también en el alta).
-4. **Informe del día** — un bloque de texto por paciente listo para **copiar y pegar** en el
-   software de historia clínica (botón por paciente y «Copiar todos»).
+4. **Informe del día** — un **resumen clínico narrado** por paciente (asistencia, evolución,
+   ajuste de tratamiento y peculiaridades), en tono profesional, listo para **copiar y pegar** en
+   el evolutivo de la historia clínica. El nombre, fecha, hora y tipo de cita quedan **fuera del
+   texto que se copia** (como cabecera de referencia). Las **1ª sesiones no generan informe de
+   seguimiento** y no aparecen en el listado.
 5. **Historial por paciente** — todas sus sesiones, con marca de **1ª sesión** (se marca a mano
    cuando corresponde) y resumen de evolución y adherencia.
 6. **Alta con informe** — al dar el alta eliges **estado** y **motivo**; se genera un **informe de
