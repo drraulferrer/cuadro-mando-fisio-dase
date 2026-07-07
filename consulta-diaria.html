@@ -668,13 +668,41 @@ function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('visible');
   clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('visible'), 2600);
 }
-async function copiarTexto(txt){
-  try{ await navigator.clipboard.writeText(txt); toast('Copiado al portapapeles'); }
-  catch(e){
-    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
-    ta.select(); try{ document.execCommand('copy'); toast('Copiado al portapapeles'); }
-    catch(e2){ toast('No se pudo copiar automáticamente'); }
+function copiarConExecCommand(txt){
+  // método clásico, síncrono: funciona dentro del gesto también en Safari/iPad
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.contentEditable = 'true';
+    ta.readOnly = false;
+    ta.style.position = 'fixed';
+    ta.style.top = '0'; ta.style.left = '0';
+    ta.style.width = '1px'; ta.style.height = '1px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    // iOS necesita un rango de selección explícito
+    const rango = document.createRange();
+    rango.selectNodeContents(ta);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(rango);
+    ta.setSelectionRange(0, txt.length);
+    ta.focus();
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges();
     ta.remove();
+    return ok;
+  }catch(e){ return false; }
+}
+function copiarTexto(txt){
+  if(copiarConExecCommand(txt)){ toast('Copiado al portapapeles'); return; }
+  // refuerzo con la API moderna (asíncrona)
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(
+      ()=>toast('Copiado al portapapeles'),
+      ()=>toast('No se pudo copiar. Mantén pulsado el texto para copiarlo a mano.')
+    );
+  } else {
+    toast('No se pudo copiar. Mantén pulsado el texto para copiarlo a mano.');
   }
 }
 
