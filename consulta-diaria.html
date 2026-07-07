@@ -1529,7 +1529,7 @@ $('#btnCopiarTodo').addEventListener('click', ()=>{
 /* =====================================================================
    ESTADÍSTICAS (día + histórico, SVG propio sin dependencias)
    ===================================================================== */
-let statsSemanas = 12;   // 4 | 12 | 26 | 0 (= todo el histórico)
+let statsDias = 14;   // ventana del histórico en días: 7 | 14 | 28 | 0 (= todo lo guardado)
 const C_AZUL='#0079A8', C_ROJO='#D23B3B', C_VERDE='#2E7D32', C_AMBAR='#8F5400', C_NEUTRO='#6E7883';
 
 function lunesDe(fechaISO){
@@ -1616,12 +1616,12 @@ function barrasH(items){
 
 function renderStats(){
   const cont = $('#statsContenido');
-  /* --- periodo del histórico --- */
+  /* --- periodo del histórico (ventana de días hacia atrás desde el día seleccionado) --- */
   let desde = null;
-  if(statsSemanas){
-    const [a,m,d] = lunesDe(fechaActual).split('-').map(Number);
+  if(statsDias){
+    const [a,m,d] = fechaActual.split('-').map(Number);
     const dt = new Date(a, m-1, d);
-    dt.setDate(dt.getDate() - 7*(statsSemanas-1));
+    dt.setDate(dt.getDate() - (statsDias-1));
     desde = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
   }
   /* --- el día --- */
@@ -1693,7 +1693,10 @@ function renderStats(){
   });
   const itemsCias = Object.entries(derivMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([label,n])=>({label,n}));
   const itemsCentro = Object.entries(centroMap).sort((a,b)=>b[1]-a[1]).map(([label,n])=>({label,n}));
-  const etiquetaPeriodo = statsSemanas ? 'últimas '+statsSemanas+' semanas' : 'todo el histórico';
+  const etiquetaPeriodo = !statsDias ? 'todo lo guardado'
+    : statsDias===7 ? 'últimos 7 días'
+    : statsDias%7===0 ? 'últimas '+(statsDias/7)+' semanas'
+    : 'últimos '+statsDias+' días';
 
   const SEG_EV = [{label:'Mejor',n:0,color:C_VERDE},{label:'Igual',n:0,color:C_NEUTRO},{label:'Peor',n:0,color:C_ROJO}];
   const segEv = ev => SEG_EV.map((s,i)=>({...s, n:[ev.mejor,ev.igual,ev.peor][i]}));
@@ -1722,8 +1725,8 @@ function renderStats(){
   h += '<div class="card">';
   h += '<div class="fila-botones" style="justify-content:space-between"><h2 style="font-size:16px">Histórico</h2>';
   h += '<span class="seg" role="group" aria-label="Periodo del histórico">'+
-    [[4,'4 sem'],[12,'12 sem'],[26,'6 meses'],[0,'Todo']].map(([v,l])=>
-      '<button data-sem="'+v+'" class="a'+(statsSemanas===v?' on':'')+'">'+l+'</button>').join('')+'</span></div>';
+    [[7,'7 días'],[14,'2 sem'],[28,'4 sem'],[0,'Todo']].map(([v,l])=>
+      '<button data-sem="'+v+'" class="a'+(statsDias===v?' on':'')+'">'+l+'</button>').join('')+'</span></div>';
   if(!ses.length){
     h += '<div class="vacio">Aún no hay sesiones registradas en este periodo.</div></div>';
     cont.innerHTML = h;
@@ -1783,7 +1786,7 @@ function renderStats(){
 function enlazarStats(cont){
   cont.onclick = ev=>{
     const b = ev.target.closest('[data-sem]');
-    if(b){ statsSemanas = +b.dataset.sem; renderStats(); }
+    if(b){ statsDias = +b.dataset.sem; renderStats(); }
   };
 }
 
