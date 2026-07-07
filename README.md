@@ -94,10 +94,14 @@ diario con pacientes en la consulta:
 1. **Hoja del día con foto** — haz una foto a la hoja impresa de pacientes. Puedes leer los
    nombres automáticamente (**OCR** con Tesseract.js, necesita internet la primera vez) revisando
    y corrigiendo lo detectado, o añadirlos a mano mirando la foto (que queda guardada y ampliable).
-   El OCR se queda **solo con el nombre y apellidos** (descarta cifras y siglas tipo CIPA/NHC),
+   El OCR se queda **solo con el nombre y apellidos** (descarta cifras y siglas administrativas),
    coge la hora si aparece, y el prefijo **V / SES / TEL** de la hoja se convierte en la etiqueta
    de **tipo de cita** (valoración / sesión / telefónica), visible en la agenda, editable, e
-   incluida en informes y en el Excel.
+   incluida en informes y en el Excel. También extrae, revisables antes de añadir: los **4 últimos
+   dígitos del TIS**, el **CIAS del médico derivador** (para estadísticas de derivación) y la
+   **fecha de nacimiento**, de la que calcula la **edad** que se muestra junto al nombre.
+   Botón **«Resetear captura»** para vaciar las citas del día y empezar de cero (y el OCR nunca
+   duplica a un paciente que ya esté en el día).
 2. **Asistencia con hora** — marca «Viene / No viene»; al marcar «Viene» se registra la **hora de
    llegada** automáticamente (editable).
 3. **Registro de la sesión** — evolución (**mejor / igual / peor**), cumplimiento de la **pauta de
@@ -120,9 +124,10 @@ diario con pacientes en la consulta:
    a la pauta, altas (estado y media de sesiones) y ejercicios más pautados. Gráficos SVG propios
    (sin dependencias), con leyenda y vista de tabla en cada uno.
 8. **Código pseudoanónimo** — cada paciente tiene un código con las **iniciales del nombre y
-   apellidos + los 4 últimos dígitos del CIPA** (p. ej. `MGL-1234`). El CIPA se introduce al
-   añadir el paciente o en su ficha (si pegas el CIPA completo, solo se guardan los 4 últimos
-   dígitos). El código se ve en el listado y en la ficha de cada paciente.
+   apellidos + los 4 últimos dígitos del TIS** (p. ej. `MGL-1234`). El TIS se introduce al
+   añadir el paciente, desde el OCR o en su ficha (si pegas el TIS completo, solo se guardan los
+   4 últimos dígitos; los datos antiguos guardados como CIPA migran solos). El código se ve en el
+   listado y en la ficha de cada paciente.
 9. **Copia de seguridad y exportación** — exportar/importar los datos en JSON y **exportar a
    Excel (.xlsx)** con tres hojas: *Pacientes* (situación, sesiones, alta), *Sesiones*
    (asistencia, horas, evolución, pauta) y *Ejercicios* (tipo, series, repeticiones, descanso).
