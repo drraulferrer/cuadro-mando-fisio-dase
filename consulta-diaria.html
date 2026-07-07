@@ -401,6 +401,14 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
     <div class="campo"><label for="mpHora">Hora de la cita</label>
       <input type="time" id="mpHora">
     </div>
+    <div class="campo"><label for="mpTipo">Tipo de cita</label>
+      <select id="mpTipo">
+        <option value="">—</option>
+        <option value="V">V · Valoración</option>
+        <option value="SES">SES · Sesión de tratamiento</option>
+        <option value="TEL">TEL · Consulta telefónica</option>
+      </select>
+    </div>
     <div class="campo">
       <label class="check" style="text-transform:none; letter-spacing:0">
         <input type="checkbox" id="mpPrimera"> Es su primera sesión
@@ -599,6 +607,7 @@ function numeroDeSesion(ses){
 function nuevaSesion(pacienteId, fecha, horaCita, primera){
   const ses = {
     id:uid(), pacienteId, fecha, horaCita:horaCita||'',
+    tipoCita:'',                       // '' | V | SES | TEL
     asistencia:'pendiente',            // pendiente | si | no
     horaLlegada:null, primera:!!primera,
     evolucion:null,                    // mejor | igual | peor
@@ -679,6 +688,7 @@ function informeSesion(ses){
   L.push('FISIOTERAPIA — SEGUIMIENTO DE SESIÓN');
   L.push('Paciente: '+(p?p.nombre:'—'));
   L.push('Fecha: '+fmtFecha(ses.fecha)+(ses.horaCita?(' · Cita: '+ses.horaCita):''));
+  if(ses.tipoCita && TIPOS_CITA[ses.tipoCita]) L.push('Tipo de cita: '+TIPOS_CITA[ses.tipoCita]+' ('+ses.tipoCita+')');
   if(ses.asistencia==='no'){
     L.push('Asistencia: NO ACUDE a la cita.');
     if(ses.obs) L.push('Observaciones: '+ses.obs);
@@ -821,6 +831,9 @@ function cardSesion(s){
   if(s.primera) h += '<span class="chip azul">1ª sesión</span>';
   else if(n && s.asistencia==='si') h += '<span class="chip gris">Sesión '+n+'</span>';
   if(p && p.alta) h += '<span class="chip verde">Alta '+fmtFecha(p.alta.fecha)+'</span>';
+  h += '<label class="check" title="Tipo de cita">'+
+       '<select data-f="tipoCita" aria-label="Tipo de cita" style="border:1px solid var(--borde); border-radius:7px; padding:5px 4px">'+
+       ['','V','SES','TEL'].map(v=>'<option value="'+v+'"'+((s.tipoCita||'')===v?' selected':'')+'>'+(v||'Tipo —')+'</option>').join('')+'</select></label>';
   h += '<label class="check">Cita <input type="time" data-f="horaCita" value="'+esc(s.horaCita)+'"></label>';
   h += '</div>';
 
@@ -1000,7 +1013,7 @@ $('#ejOtro').addEventListener('click', ()=>{
 
 /* ---- añadir paciente a mano ---- */
 $('#btnAddPaciente').addEventListener('click', ()=>{
-  $('#mpNombre').value=''; $('#mpCipa').value=''; $('#mpHora').value=''; $('#mpPrimera').checked=false;
+  $('#mpNombre').value=''; $('#mpCipa').value=''; $('#mpHora').value=''; $('#mpTipo').value=''; $('#mpPrimera').checked=false;
   $('#dlPacientes').innerHTML = S.pacientes.map(p=>'<option value="'+esc(p.nombre)+'">').join('');
   abrirModal('modalPaciente');
   setTimeout(()=>$('#mpNombre').focus(), 50);
@@ -1012,7 +1025,8 @@ $('#mpGuardar').addEventListener('click', ()=>{
   const p = crearOEncontrarPaciente(nombre);
   const cipa = cipa4De($('#mpCipa').value);
   if(cipa) p.cipa4 = cipa;
-  nuevaSesion(p.id, fechaActual, $('#mpHora').value, $('#mpPrimera').checked);
+  const ses = nuevaSesion(p.id, fechaActual, $('#mpHora').value, $('#mpPrimera').checked);
+  ses.tipoCita = $('#mpTipo').value;
   guardar(); cerrarModales(); renderDia();
 });
 
@@ -1068,6 +1082,8 @@ $('#btnOCR').addEventListener('click', async ()=>{
     $('#ocrLineas').innerHTML = ocrResultados.map((r,i)=>
       '<div class="ocr-linea">'+
       '<input type="checkbox" data-i="'+i+'"'+(r.probable?' checked':'')+'>'+
+      '<select data-i="'+i+'" data-f="tipo" aria-label="Tipo de cita" style="width:70px; border:1px solid var(--borde); border-radius:7px; padding:8px 4px">'+
+        ['','V','SES','TEL'].map(v=>'<option value="'+v+'"'+(r.tipo===v?' selected':'')+'>'+(v||'—')+'</option>').join('')+'</select>'+
       '<input type="text" data-i="'+i+'" data-f="nombre" value="'+esc(r.nombre)+'">'+
       '<input type="time" data-i="'+i+'" data-f="hora" value="'+esc(r.hora)+'">'+
       '</div>').join('');
@@ -1085,18 +1101,43 @@ function cargarTesseract(){
     document.head.appendChild(sc);
   });
 }
+const TIPOS_CITA = { V:'Valoración', SES:'Sesión de tratamiento', TEL:'Consulta telefónica' };
 function parsearLineaOCR(linea){
   let t = linea.replace(/\s+/g,' ').trim();
   if(t.length<3) return null;
   let hora='';
   const m = t.match(/([01]?\d|2[0-3])[:.hH]([0-5]\d)/);
   if(m){ hora = m[1].padStart(2,'0')+':'+m[2]; t = t.replace(m[0],' '); }
-  // limpia números sueltos y símbolos en los extremos
   t = t.replace(/[|_*#·•=~<>[\]{}]/g,' ').replace(/\s+/g,' ').trim();
-  const letras = (t.match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g)||[]).length;
+  // tipo de cita al inicio de la línea: V / SES / TEL (se quita del nombre y se guarda como etiqueta)
+  let tipo='';
+  const mt = t.match(/^(V|SES|TEL)(?=[\s.:,;-]|$)[\s.:,;-]*/i);
+  if(mt){ tipo = mt[1].toUpperCase(); t = t.slice(mt[0].length); }
+  // se queda solo con el nombre y apellidos: la racha más larga de palabras alfabéticas
+  const nombre = extraerNombreOCR(t);
+  if(!nombre) return null;
+  const letras = (nombre.match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g)||[]).length;
   if(letras<4) return null;
-  const probable = letras>=6 && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}/.test(t);
-  return {nombre:t, hora, probable};
+  const probable = letras>=6 && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}[\s,]+.*[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{3,}/.test(nombre);
+  return {nombre, hora, tipo, probable};
+}
+const NO_NOMBRE = new Set(['nhc','cipa','dni','nif','nie','tel','tfno','telefono','teléfono','movil','móvil','sala','box','cias','hc','edad','cita','hora','obs','num','nº','ses']);
+function extraerNombreOCR(t){
+  const tokens = t.split(' ').filter(Boolean);
+  const esPalabra = w=>{
+    if(/\d/.test(w)) return false;                                  // cifras (CIPA, teléfono, sala…) rompen el nombre
+    const limpio = w.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g,'');
+    if(!limpio) return false;
+    if(NO_NOMBRE.has(norm(limpio))) return false;                   // siglas administrativas no son nombre
+    if(!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ.,''-]*$/.test(w)) return false;
+    return limpio.length>=2 || CONECTORES.has(limpio.toLowerCase());
+  };
+  let mejor=[], actual=[];
+  tokens.concat([' ']).forEach(w=>{
+    if(esPalabra(w)) actual.push(w);
+    else { if(actual.length>mejor.length) mejor=actual; actual=[]; }
+  });
+  return mejor.slice(0,8).join(' ').replace(/[,;.]+$/,'').trim();
 }
 $('#ocrLineas').addEventListener('change', ev=>{
   const el=ev.target, i=+el.dataset.i, r=ocrResultados[i]; if(!r) return;
@@ -1112,7 +1153,8 @@ $('#ocrAdd').addEventListener('click', ()=>{
     const p = crearOEncontrarPaciente(nombre);
     const yaHoy = sesionesDelDia(fechaActual).some(s=>s.pacienteId===p.id);
     if(yaHoy) return;
-    nuevaSesion(p.id, fechaActual, r.hora, false);
+    const ses = nuevaSesion(p.id, fechaActual, r.hora, false);
+    ses.tipoCita = TIPOS_CITA[r.tipo] ? r.tipo : '';
     n++;
   });
   guardar(); cerrarModales(); renderDia();
@@ -1472,6 +1514,7 @@ function renderFicha(){
   [...ses].reverse().forEach(s=>{
     h += '<div class="hist-ses h-'+s.asistencia+'">';
     h += '<span class="fecha">'+fmtFecha(s.fecha)+'</span> ';
+    if(s.tipoCita) h += '<span class="chip gris" title="'+esc(TIPOS_CITA[s.tipoCita]||'')+'">'+esc(s.tipoCita)+'</span> ';
     if(s.primera) h += '<span class="chip azul">1ª sesión</span> ';
     if(s.asistencia==='si') h += '<span class="chip verde">Acude'+(s.horaLlegada?' '+s.horaLlegada:'')+'</span>';
     else if(s.asistencia==='no') h += '<span class="chip rojo">No acude</span>';
@@ -1617,7 +1660,7 @@ function filasExport(pseudo){
   orden.forEach(s=>{
     const p = idPac[s.pacienteId]; if(!p) return;
     sesiones.push(Object.assign(et(p), {
-      'Fecha': fmtFecha(s.fecha), 'Hora cita': s.horaCita||'',
+      'Fecha': fmtFecha(s.fecha), 'Tipo de cita': s.tipoCita||'', 'Hora cita': s.horaCita||'',
       'Asistencia': TXT_ASIS[s.asistencia]||'', 'Hora llegada': s.horaLlegada||'',
       '1ª sesión': s.primera?'Sí':'', 'Evolución': s.evolucion?TXT_EVO_CORTO[s.evolucion]:'',
       'Cumple pauta': s.pauta?TXT_PAUTA_CORTO[s.pauta]:'',

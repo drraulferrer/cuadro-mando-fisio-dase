@@ -94,6 +94,10 @@ diario con pacientes en la consulta:
 1. **Hoja del día con foto** — haz una foto a la hoja impresa de pacientes. Puedes leer los
    nombres automáticamente (**OCR** con Tesseract.js, necesita internet la primera vez) revisando
    y corrigiendo lo detectado, o añadirlos a mano mirando la foto (que queda guardada y ampliable).
+   El OCR se queda **solo con el nombre y apellidos** (descarta cifras y siglas tipo CIPA/NHC),
+   coge la hora si aparece, y el prefijo **V / SES / TEL** de la hoja se convierte en la etiqueta
+   de **tipo de cita** (valoración / sesión / telefónica), visible en la agenda, editable, e
+   incluida en informes y en el Excel.
 2. **Asistencia con hora** — marca «Viene / No viene»; al marcar «Viene» se registra la **hora de
    llegada** automáticamente (editable).
 3. **Registro de la sesión** — evolución (**mejor / igual / peor**), cumplimiento de la **pauta de
