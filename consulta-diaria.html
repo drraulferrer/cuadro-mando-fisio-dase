@@ -423,9 +423,13 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
     <h2 style="font-size:16px; margin-bottom:4px">Médicos derivadores (CIAS)</h2>
     <p class="suave" style="font-size:13.5px; margin:0 0 8px">
       Ponle nombre a cada CIAS y su centro (Entrevías / El Pozo). El nombre aparecerá en la
-      cabecera de los pacientes y en las estadísticas de derivación.
+      cabecera de los pacientes y en las estadísticas de derivación. <b>Se guarda aparte y se
+      conserva aunque borres todos los datos.</b>
     </p>
     <div id="listaMedicos"></div>
+    <div class="fila-botones" style="margin-top:10px">
+      <button class="btn peligro mini" id="btnBorrarMedicos">Borrar directorio de médicos</button>
+    </div>
   </div>
 </section>
 
@@ -597,6 +601,7 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
 
 const LS_DATOS = 'cdFisio.datos.v1';
 const LS_FOTOS = 'cdFisio.fotos.v1';
+const LS_MEDICOS = 'cdFisio.medicos.v1';   // directorio CIAS→médico, aparte para que sobreviva al borrado de datos
 
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -615,6 +620,14 @@ function cargar(){
   // migración: el campo antes llamado CIPA pasa a ser TIS (mismos 4 últimos dígitos)
   S.pacientes.forEach(p=>{ if(p.cipa4 && !p.tis4){ p.tis4 = p.cipa4; delete p.cipa4; } });
   if(!S.medicos) S.medicos = {};
+  // el directorio de médicos vive en su propia clave (persiste aunque se borren los datos)
+  let medDir = null;
+  try{ medDir = JSON.parse(localStorage.getItem(LS_MEDICOS)); }catch(e){}
+  if(medDir && typeof medDir==='object'){ S.medicos = Object.assign(medDir, S.medicos); }
+  guardarMedicos();
+}
+function guardarMedicos(){
+  try{ localStorage.setItem(LS_MEDICOS, JSON.stringify(S.medicos||{})); }catch(e){}
 }
 const CENTROS = ['Entrevías','El Pozo'];
 function medicoDe(cias){
@@ -1974,27 +1987,38 @@ function renderMedicos(){
   const cont = $('#listaMedicos');
   const cnt = {};
   S.pacientes.forEach(p=>{ if(p.cias) cnt[p.cias]=(cnt[p.cias]||0)+1; });
-  const claves = Object.keys(cnt).sort();
+  // se listan los CIAS de los pacientes Y los del directorio ya identificados (aunque no queden pacientes)
+  const claves = Array.from(new Set([...Object.keys(cnt), ...Object.keys(S.medicos||{})])).sort();
   if(!claves.length){
     cont.innerHTML = '<div class="vacio" style="padding:12px">Aún no hay CIAS registrados. Se capturan de la hoja con el OCR o se ponen en la ficha del paciente.</div>';
     return;
   }
-  cont.innerHTML = claves.map(c=>{
-    const m = S.medicos[c]||{};
-    return '<div class="med-fila" data-cias="'+esc(c)+'">'+
-      '<span class="chip gris" style="flex:none" title="CIAS">'+esc(c)+'</span>'+
-      '<span class="suave" style="flex:none; font-size:12.5px">'+cnt[c]+' pac.</span>'+
-      '<input type="text" data-f="nombre" placeholder="Nombre del médico" value="'+esc(m.nombre||'')+'" style="flex:1; min-width:130px">'+
-      '<select data-f="centro" aria-label="Centro derivador">'+
-        ['','Entrevías','El Pozo'].map(v=>'<option value="'+v+'"'+((m.centro||'')===v?' selected':'')+'>'+(v||'— centro')+'</option>').join('')+'</select>'+
-      '</div>';
-  }).join('');
+  cont.innerHTML =
+    '<p class="suave" style="font-size:12.5px; margin:0 0 8px">Este directorio se guarda aparte: no se borra al «Borrar todos los datos».</p>'+
+    claves.map(c=>{
+      const m = S.medicos[c]||{};
+      return '<div class="med-fila" data-cias="'+esc(c)+'">'+
+        '<span class="chip gris" style="flex:none" title="CIAS">'+esc(c)+'</span>'+
+        '<span class="suave" style="flex:none; font-size:12.5px">'+(cnt[c]||0)+' pac.</span>'+
+        '<input type="text" data-f="nombre" placeholder="Nombre del médico" value="'+esc(m.nombre||'')+'" style="flex:1; min-width:130px">'+
+        '<select data-f="centro" aria-label="Centro derivador">'+
+          ['','Entrevías','El Pozo'].map(v=>'<option value="'+v+'"'+((m.centro||'')===v?' selected':'')+'>'+(v||'— centro')+'</option>').join('')+'</select>'+
+        '<button class="btn mini peligro" data-a="del-med" title="Quitar del directorio" aria-label="Quitar del directorio">✕</button>'+
+        '</div>';
+    }).join('');
   cont.onchange = ev=>{
-    const fila = ev.target.closest('[data-cias]'); if(!fila) return;
+    const fila = ev.target.closest('[data-cias]'); if(!fila || !ev.target.dataset.f) return;
     const c = fila.dataset.cias, f = ev.target.dataset.f;
     S.medicos[c] = S.medicos[c] || {};
     S.medicos[c][f] = ev.target.value.trim();
-    guardar();
+    guardar(); guardarMedicos();
+    if(!$('#tab-hoy').hidden) renderDia();
+  };
+  cont.onclick = ev=>{
+    const btn = ev.target.closest('[data-a=del-med]'); if(!btn) return;
+    const c = ev.target.closest('[data-cias]').dataset.cias;
+    delete S.medicos[c];
+    guardar(); guardarMedicos(); renderMedicos();
     if(!$('#tab-hoy').hidden) renderDia();
   };
 }
@@ -2112,9 +2136,10 @@ $('#inputImportar').addEventListener('change', ev=>{
       const d = JSON.parse(fr.result);
       if(!Array.isArray(d.pacientes) || !Array.isArray(d.sesiones)) throw new Error('formato');
       if(!(await confirmar('Se reemplazarán los datos actuales ('+S.pacientes.length+' pacientes) por los de la copia ('+d.pacientes.length+' pacientes). ¿Continuar?'))) return;
-      S = { version:1, pacientes:d.pacientes, sesiones:d.sesiones, medicos:d.medicos||{} };
+      const medFus = Object.assign({}, S.medicos, d.medicos||{});   // se conserva el directorio de médicos y se fusiona con el de la copia
+      S = { version:1, pacientes:d.pacientes, sesiones:d.sesiones, medicos:medFus };
       S.pacientes.forEach(p=>{ if(p.cipa4 && !p.tis4){ p.tis4 = p.cipa4; delete p.cipa4; } });   // copias antiguas (CIPA)
-      guardar(); renderCopia(); renderDia();
+      guardar(); guardarMedicos(); renderCopia(); renderDia();
       toast('Copia importada correctamente');
     }catch(e){ toast('El archivo no es una copia válida de esta aplicación'); }
   };
@@ -2128,10 +2153,20 @@ $('#btnBorrarFotos').addEventListener('click', async ()=>{
   guardarFotos(); renderCopia(); toast('Fotos antiguas borradas');
 });
 $('#btnBorrarTodo').addEventListener('click', async ()=>{
-  if(!(await confirmar('Se borrarán TODOS los datos de la aplicación en este navegador: pacientes, sesiones y fotos. Esta acción no se puede deshacer. ¿Seguro?'))) return;
+  if(!(await confirmar('Se borrarán los pacientes, sesiones y fotos de este navegador. El directorio de médicos (CIAS) se conserva. Esta acción no se puede deshacer. ¿Seguro?'))) return;
   localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_FOTOS);
-  S = { version:1, pacientes:[], sesiones:[], medicos:{} }; FOTOS = {};
-  renderCopia(); renderDia(); toast('Datos borrados');
+  const medDir = S.medicos || {};
+  S = { version:1, pacientes:[], sesiones:[], medicos:medDir }; FOTOS = {};
+  renderCopia(); renderDia(); toast('Datos borrados (se conserva el directorio de médicos)');
+});
+$('#btnBorrarMedicos').addEventListener('click', async ()=>{
+  const n = Object.keys(S.medicos||{}).length;
+  if(!n){ toast('El directorio de médicos ya está vacío'); return; }
+  if(!(await confirmar('¿Borrar el directorio de médicos ('+n+' CIAS con nombre/centro)? Esta acción no se puede deshacer.'))) return;
+  S.medicos = {};
+  localStorage.removeItem(LS_MEDICOS);
+  guardar(); renderCopia(); if(!$('#tab-hoy').hidden) renderDia();
+  toast('Directorio de médicos borrado');
 });
 $('#btnVaciarDia').addEventListener('click', async ()=>{
   const ses = sesionesDelDia(fechaActual);
