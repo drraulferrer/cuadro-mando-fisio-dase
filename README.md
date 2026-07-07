@@ -91,7 +91,8 @@ Cada tema es sólo un conjunto de **variables CSS**. Para crear uno nuevo:
 **`consulta-diaria.html`** es una segunda app, independiente del cuadro de mando, para el trabajo
 diario con pacientes en la consulta:
 
-1. **Hoja del día con foto** — haz una foto a la hoja impresa de pacientes. Puedes leer los
+1. **Hoja del día con foto** — haz una foto a la hoja impresa de pacientes **o elige una imagen de
+   la galería / archivos** del dispositivo. Puedes leer los
    nombres automáticamente (**OCR** con Tesseract.js, necesita internet la primera vez) revisando
    y corrigiendo lo detectado, o añadirlos a mano mirando la foto (que queda guardada y ampliable).
    El OCR se queda **solo con el nombre y apellidos** (descarta cifras y siglas administrativas),

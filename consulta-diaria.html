@@ -322,13 +322,13 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
       <div style="flex:1; min-width:220px">
         <h2 style="font-size:15.5px; margin-bottom:6px">Hoja de pacientes del día</h2>
         <p class="suave" style="margin:0 0 10px; font-size:13.5px">
-          Haz una foto a la hoja impresa. Puedes leer los nombres automáticamente (OCR, necesita
-          internet la primera vez) o añadirlos a mano mirando la foto.
+          Haz una foto a la hoja impresa o elige una imagen de la galería. Puedes leer los nombres
+          automáticamente (OCR, necesita internet la primera vez) o añadirlos a mano mirando la foto.
         </p>
         <div class="fila-botones">
           <label class="btn primario" style="display:inline-block">
-            📷 Foto de la hoja
-            <input type="file" id="inputFoto" accept="image/*" capture="environment" hidden>
+            📷 Foto o galería
+            <input type="file" id="inputFoto" accept="image/*" hidden>
           </label>
           <button class="btn" id="btnOCR" disabled>Leer nombres (OCR)</button>
           <button class="btn" id="btnPorOrd" disabled title="Lee de la foto solo la fila con ese nº de orden">+ Añadir por Ord.</button>
