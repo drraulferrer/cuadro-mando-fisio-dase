@@ -115,7 +115,9 @@ diario con pacientes en la consulta:
 3. **Registro de la sesión** — evolución (**mejor / igual / peor**), cumplimiento de la **pauta de
    tratamiento** (sí / parcial / no) y **ejercicios pautados**: tantos como quieras, cada uno con
    tipo, series, repeticiones, descanso y carga/notas. Botón para **repetir los ejercicios de la
-   sesión anterior**. Pensado para usar **sin teclado** (tablet): los ejercicios se eligen de un
+   sesión anterior**. Bloques plegables (colapsados por defecto) de **medios físicos** (TENS,
+   microonda, onda corta continua/pulsada, infrarrojo — cada uno con sus parámetros) y de
+   **recomendaciones domiciliarias** (termoterapia, crioterapia…). Pensado para usar **sin teclado** (tablet): los ejercicios se eligen de un
    **catálogo tocable** (con los usados con frecuencia primero, aprendidos de tu propio registro),
    las series/repeticiones se ajustan con **− / +**, el descanso es un desplegable y las
    observaciones tienen **frases rápidas** de un toque (también en el alta).
