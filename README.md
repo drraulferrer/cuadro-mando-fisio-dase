@@ -11,7 +11,8 @@ Spec: [`../specs/cuadro-mando-fisio-dase.md`](../specs/cuadro-mando-fisio-dase.m
 - **`cuadro-mando-fisio-dase.html`** — el cuadro de mando. Un solo fichero, sin dependencias externas
   (lleva SheetJS y todo el código embebidos). Funciona **sin internet**.
 - **`consulta-diaria.html`** — app de **consulta diaria** (pacientes del día). Ver
-  [su sección](#consulta-diaria-día-a-día-de-la-consulta) más abajo.
+  [su sección](#consulta-diaria-día-a-día-de-la-consulta) más abajo. Especificación replicable y
+  personalizable en [`specs/consulta-diaria.md`](specs/consulta-diaria.md).
 - **`index.html`** — portada con acceso a las dos aplicaciones (cómodo al servir la carpeta).
 - **`plantillas/`** — plantilla estándar para introducir los datos:
   - `Plantilla_Cuadro_Mando_Fisio_DASE.xlsx` (hojas `Unidades`, `CMI` y `LÉEME`).
