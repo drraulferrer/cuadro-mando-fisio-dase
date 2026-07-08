@@ -708,7 +708,6 @@ let altaPacienteId = null;
 
 function cargar(){
   try{ const d = JSON.parse(localStorage.getItem(LS_DATOS)); if(d && d.pacientes) S = d; }catch(e){}
-  try{ const f = JSON.parse(localStorage.getItem(LS_FOTOS)); if(f) FOTOS = f; }catch(e){}
   // migración: el campo antes llamado CIPA pasa a ser TIS (mismos 4 últimos dígitos)
   S.pacientes.forEach(p=>{ if(p.cipa4 && !p.tis4){ p.tis4 = p.cipa4; delete p.cipa4; } });
   if(!S.medicos) S.medicos = {};
@@ -735,11 +734,62 @@ function etiquetaMedico(cias){
 }
 function guardar(){
   try{ localStorage.setItem(LS_DATOS, JSON.stringify(S)); }
-  catch(e){ toast('⚠️ No se pudo guardar (almacenamiento lleno). Exporta y borra fotos antiguas.'); }
+  catch(e){ toast('⚠️ No se pudo guardar (almacenamiento lleno). Exporta una copia.'); }
 }
-function guardarFotos(){
-  try{ localStorage.setItem(LS_FOTOS, JSON.stringify(FOTOS)); }
-  catch(e){ toast('⚠️ La foto no cabe en el almacenamiento: se muestra pero no quedará guardada.'); }
+
+/* ---------- fotos: en IndexedDB (cuota grande) con respaldo a localStorage ----------
+   Sacar las fotos del cupo de 5 MB de localStorage deja ese espacio para el
+   historial (texto), que así puede crecer años sin tener que vaciar datos. */
+const FOTO_DIAS_MAX = 21;   // autopurga de fotos más antiguas que esto
+const PhotoDB = {
+  db:null, idb:false,
+  init(){
+    return new Promise((res)=>{
+      if(typeof indexedDB==='undefined'){ res(); return; }
+      let r; try{ r = indexedDB.open('cdFisioFotos', 1); }catch(e){ res(); return; }
+      r.onupgradeneeded = ()=>{ try{ r.result.createObjectStore('fotos'); }catch(e){} };
+      r.onsuccess = ()=>{ this.db=r.result; this.idb=true; res(); };
+      r.onerror = ()=>res(); r.onblocked = ()=>res();
+    });
+  },
+  _st(mode){ return this.db.transaction('fotos', mode).objectStore('fotos'); },
+  get(f){
+    if(!this.idb){ return Promise.resolve((fotosLS()[f])||null); }
+    return new Promise((res)=>{ try{ const q=this._st('readonly').get(f); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } });
+  },
+  set(f,d){
+    if(!this.idb){ return Promise.resolve(fotosLSset(f,d)); }
+    return new Promise((res)=>{ try{ const q=this._st('readwrite').put(d,f); q.onsuccess=()=>res(true); q.onerror=()=>res(false); }catch(e){ res(false); } });
+  },
+  del(f){
+    if(!this.idb){ return Promise.resolve(fotosLSdel(f)); }
+    return new Promise((res)=>{ try{ const q=this._st('readwrite').delete(f); q.onsuccess=()=>res(true); q.onerror=()=>res(false); }catch(e){ res(false); } });
+  },
+  keys(){
+    if(!this.idb){ return Promise.resolve(Object.keys(fotosLS())); }
+    return new Promise((res)=>{ try{ const q=this._st('readonly').getAllKeys(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>res([]); }catch(e){ res([]); } });
+  },
+  async clear(){ for(const k of await this.keys()) await this.del(k); }
+};
+function fotosLS(){ try{ return JSON.parse(localStorage.getItem(LS_FOTOS))||{}; }catch(e){ return {}; } }
+function fotosLSset(f,d){ try{ const m=fotosLS(); m[f]=d; localStorage.setItem(LS_FOTOS, JSON.stringify(m)); return true; }catch(e){ toast('⚠️ La foto no cabe: se muestra pero no quedará guardada.'); return false; } }
+function fotosLSdel(f){ try{ const m=fotosLS(); delete m[f]; localStorage.setItem(LS_FOTOS, JSON.stringify(m)); return true; }catch(e){ return false; } }
+async function fotoGuardar(f,d){ FOTOS[f]=d; return PhotoDB.set(f,d); }
+async function fotoBorrar(f){ delete FOTOS[f]; return PhotoDB.del(f); }
+async function fotoObtener(f){ if(FOTOS[f]!=null) return FOTOS[f]; const d=await PhotoDB.get(f); if(d) FOTOS[f]=d; return d||null; }
+function fechaMenos(dias){ const [a,m,d]=hoyISO().split('-').map(Number); const dt=new Date(a,m-1,d); dt.setDate(dt.getDate()-dias); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+async function purgarFotos(){ const cut=fechaMenos(FOTO_DIAS_MAX); for(const k of await PhotoDB.keys()){ if(k<cut){ await PhotoDB.del(k); delete FOTOS[k]; } } }
+async function initFotos(){
+  await PhotoDB.init();
+  if(PhotoDB.idb){
+    // migrar fotos que estuvieran en localStorage a IndexedDB (libera el cupo de 5 MB)
+    const m = fotosLS();
+    if(Object.keys(m).length){ for(const [f,d] of Object.entries(m)){ if(d) await PhotoDB.set(f,d); } localStorage.removeItem(LS_FOTOS); }
+  }else{
+    FOTOS = fotosLS();   // respaldo: mapa en memoria (comportamiento anterior)
+  }
+  await purgarFotos();
+  if(!$('#tab-hoy').hidden) pintarFotoDia();
 }
 
 /* ---------- utilidades ---------- */
@@ -1316,13 +1366,17 @@ $('#fechaDia').addEventListener('change', e=>{
    ===================================================================== */
 let diaVista = 'todos';    // todos | pendientes
 let diaOrden = 'hora';     // hora | nombre
-function renderDia(){
-  // foto
-  const foto = FOTOS[fechaActual];
+async function pintarFotoDia(){
+  const fecha = fechaActual;
+  const foto = await fotoObtener(fecha);
+  if(fecha !== fechaActual) return;   // cambió de día mientras cargaba
   $('#fotoDia').innerHTML = foto ? '<img src="'+foto+'" alt="Hoja del día" id="thumbFoto">' : '';
   if(foto) $('#thumbFoto').addEventListener('click', abrirFotoGrande);
   $('#btnOCR').disabled = !foto;
   $('#btnPorOrd').disabled = !foto;
+}
+function renderDia(){
+  pintarFotoDia();   // la foto vive en IndexedDB: se carga y se pinta al resolver
 
   const ses = sesionesDelDia(fechaActual);
   const nSi = ses.filter(s=>s.asistencia==='si').length;
@@ -1692,8 +1746,8 @@ $('#inputFoto').addEventListener('change', async ev=>{
   if(!file) return;
   try{
     const dataURL = await comprimirImagen(file, 1600, .72);
-    FOTOS[fechaActual] = dataURL;
-    guardarFotos(); renderDia();
+    await fotoGuardar(fechaActual, dataURL);
+    renderDia();
     toast('Foto guardada. Puedes leer los nombres con OCR o añadirlos a mano.');
   }catch(e){ toast('No se pudo procesar la imagen'); }
 });
@@ -1712,12 +1766,12 @@ function comprimirImagen(file, maxLado, calidad){
     img.src = URL.createObjectURL(file);
   });
 }
-function abrirFotoGrande(){
-  $('#fotoGrande').src = FOTOS[fechaActual] || '';
+async function abrirFotoGrande(){
+  $('#fotoGrande').src = (await fotoObtener(fechaActual)) || '';
   abrirModal('modalFoto');
 }
-$('#btnQuitarFoto').addEventListener('click', ()=>{
-  delete FOTOS[fechaActual]; guardarFotos(); cerrarModales(); renderDia();
+$('#btnQuitarFoto').addEventListener('click', async ()=>{
+  await fotoBorrar(fechaActual); cerrarModales(); renderDia();
 });
 
 /* ---- OCR ---- */
@@ -1727,14 +1781,14 @@ async function escanearFoto(onProgress){
   const worker = await Tesseract.createWorker('spa', 1, {
     logger: m=>{ if(m.status==='recognizing text' && onProgress) onProgress(Math.round(m.progress*100)+'%'); }
   });
-  const {data} = await worker.recognize(FOTOS[fechaActual]);
+  const {data} = await worker.recognize(await fotoObtener(fechaActual));
   await worker.terminate();
   const lineas = (data.text||'').split('\n').map(parsearLineaOCR).filter(Boolean);
   ocrCache[fechaActual] = lineas;
   return lineas;
 }
 $('#btnOCR').addEventListener('click', async ()=>{
-  const foto = FOTOS[fechaActual]; if(!foto) return;
+  const foto = await fotoObtener(fechaActual); if(!foto) return;
   abrirModal('modalOCR');
   $('#ocrLineas').innerHTML=''; $('#ocrAdd').disabled=true;
   const prog = $('#ocrProgreso'); prog.textContent='Cargando motor de OCR…';
@@ -2443,16 +2497,17 @@ $('#btnCopiarInforme').addEventListener('click', ()=>copiarTexto($('#txtInforme'
    COPIA DE SEGURIDAD
    ===================================================================== */
 function renderCopia(){
-  let bytes = 0;
-  try{ bytes = (localStorage.getItem(LS_DATOS)||'').length + (localStorage.getItem(LS_FOTOS)||'').length; }catch(e){}
-  const nFotos = Object.keys(FOTOS).length;
+  let bytesDatos = 0;
+  try{ bytesDatos = (localStorage.getItem(LS_DATOS)||'').length; }catch(e){}
   const sinTis = S.pacientes.filter(p=>!p.tis4).length;
   $('#avisoCipa').textContent = sinTis
     ? '⚠️ '+sinTis+' paciente'+(sinTis===1?'':'s')+' sin TIS registrado: su código serán solo las iniciales (menos identificable de forma única). Se añade desde la ficha del paciente.'
     : (S.pacientes.length ? 'Todos los pacientes tienen TIS registrado.' : '');
+  const dondeFotos = PhotoDB.idb ? 'IndexedDB (cuota amplia)' : 'localStorage (respaldo)';
   $('#usoAlmacen').textContent =
-    S.pacientes.length+' pacientes · '+S.sesiones.length+' sesiones · '+nFotos+' fotos guardadas · '+
-    'ocupación aproximada: '+(bytes/1024/1024).toFixed(1)+' MB (límite habitual del navegador: ~5 MB).';
+    S.pacientes.length+' pacientes · '+S.sesiones.length+' sesiones · historial (texto) '+(bytesDatos/1024).toFixed(0)+' KB de ~5 MB. '+
+    'Las fotos se guardan en '+dondeFotos+', aparte del historial, y se autoborran tras '+FOTO_DIAS_MAX+' días.';
+  PhotoDB.keys().then(ks=>{ if(!$('#tab-copia').hidden) $('#usoAlmacen').textContent += ' '+ks.length+' foto'+(ks.length===1?'':'s')+' guardada'+(ks.length===1?'':'s')+'.'; });
   renderMedicos();
   renderConfigProf();
 }
@@ -2638,15 +2693,16 @@ $('#inputImportar').addEventListener('change', ev=>{
   fr.readAsText(file);
 });
 $('#btnBorrarFotos').addEventListener('click', async ()=>{
-  const claves = Object.keys(FOTOS).filter(f=>f!==fechaActual);
+  const claves = (await PhotoDB.keys()).filter(f=>f!==fechaActual);
   if(!claves.length){ toast('No hay fotos de otros días'); return; }
   if(!(await confirmar('¿Borrar las fotos de '+claves.length+' día'+(claves.length===1?'':'s')+'? Se conserva la del día seleccionado y los datos de pacientes no se tocan.'))) return;
-  claves.forEach(f=>delete FOTOS[f]);
-  guardarFotos(); renderCopia(); toast('Fotos antiguas borradas');
+  for(const f of claves){ await fotoBorrar(f); }
+  renderCopia(); toast('Fotos antiguas borradas');
 });
 $('#btnBorrarTodo').addEventListener('click', async ()=>{
   if(!(await confirmar('Se borrarán los pacientes, sesiones y fotos de este navegador. El directorio de médicos (CIAS) se conserva. Esta acción no se puede deshacer. ¿Seguro?'))) return;
   localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_FOTOS);
+  await PhotoDB.clear();
   const medDir = S.medicos || {};
   S = { version:1, pacientes:[], sesiones:[], medicos:medDir }; FOTOS = {};
   renderCopia(); renderDia(); toast('Datos borrados (se conserva el directorio de médicos)');
@@ -2707,6 +2763,7 @@ document.addEventListener('keydown', ev=>{ if(ev.key==='Escape') cerrarModales()
 cargar();
 $('#fechaDia').value = fechaActual;
 renderDia();
+initFotos();   // fotos en IndexedDB: migra las de localStorage, autopurga y pinta la del día
 </script>
 </body>
 </html>
