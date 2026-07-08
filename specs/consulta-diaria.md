@@ -157,10 +157,23 @@ respetado. Paletas de gráficos verificadas para daltonismo (separación CVD) y 
   estado), y acciones: informe de historial, dar de alta / reabrir, corregir nombre (**fusiona
   historiales** si coincide con otro paciente), borrar paciente.
 
-### 6. Alta con informe
-- Estado al alta y motivo (listas), observaciones con frases rápidas.
-- Genera **informe de alta**: periodo de tratamiento, sesiones realizadas / no asistencias,
-  evolución global, adherencia, último plan de ejercicio, estado y motivo. Alta anulable.
+### 6. Alta e **informe de alta completo**
+- Alta rápida: estado al alta y motivo (listas), observaciones con frases rápidas. Alta anulable.
+- **Informe de alta completo** (editable · copiar · PDF), con función legal/asistencial. Estructura
+  (16 apartados): identificación del informe (tipo alta/continuidad, fechas de valoración y alta,
+  ámbito, motivo), del paciente (nombre, nacimiento/edad, sexo, TIS, centro de referencia, médico
+  derivador), del profesional y centro (fisioterapeuta, nº colegiado, unidad, centro); motivo de
+  derivación, diagnóstico médico, valoración fisioterápica inicial, juicio funcional, objetivos,
+  intervención realizada, evolución clínica y funcional, situación funcional al alta,
+  recomendaciones y programa domiciliario, plan de continuidad/derivación, información facilitada
+  al paciente e incidencias; firma e identificación profesional.
+  - **Se precarga automáticamente** con lo registrado (nº de sesiones y periodo, técnicas =
+    ejercicios + medios físicos, adherencia, evolución global, recomendaciones + último plan) y es
+    **totalmente editable** antes de emitir.
+  - **Copiar** (texto para el evolutivo) y **Descargar PDF** (impresión nativa → «Guardar como
+    PDF», sin dependencias; funciona en iPad). El informe editado se guarda en `p.alta.informe`.
+- Los **datos del profesional/centro** (fisioterapeuta, nº colegiado, unidad, centro, ámbito) se
+  configuran una vez en *Datos*, se guardan en `cdFisio.config.v1` y se reutilizan en cada informe.
 
 ### 7. Estadísticas (día + histórico)
 - **El día**: citas, asistencia (%), no asisten, pendientes, mejorías, altas; barras de evolución
