@@ -35,7 +35,7 @@ h1,h2,h3{margin:0; font-weight:650; text-wrap:balance}
 
 /* ---- cabecera ---- */
 header{
-  background:linear-gradient(135deg,#00648C,var(--azul));
+  background:#00648C;
   color:#fff; padding:12px 16px;
 }
 header .fila{display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:1080px; margin:0 auto}
@@ -94,8 +94,12 @@ section[hidden]{display:none}
 .fila-botones{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .grid-resumen{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px}
 .kpi{background:var(--superficie); border:1px solid var(--borde); border-radius:var(--radio); padding:10px 12px; text-align:center}
-.kpi b{display:block; font-size:22px; font-variant-numeric:tabular-nums}
+.kpi b{display:block; font-size:24px; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
 .kpi span{font-size:12.5px; color:var(--texto-suave)}
+/* lectura de semáforo: el número toma el color del estado (el rótulo aporta el significado, nunca solo el color) */
+.kpi.v b, .stat.v b{color:#276F2B}
+.kpi.n b, .stat.n b{color:#B02A2A}
+.kpi.p b, .stat.p b{color:#8F5400}
 
 /* ---- foto del día ---- */
 #fotoDia img{max-width:160px; max-height:120px; border-radius:8px; border:1px solid var(--borde); cursor:zoom-in; display:block}
@@ -1383,7 +1387,7 @@ function renderDia(){
   const nNo = ses.filter(s=>s.asistencia==='no').length;
   const nPen= ses.length-nSi-nNo;
   $('#resumenDia').innerHTML =
-    kpi(ses.length,'Citas')+kpi(nSi,'Han venido')+kpi(nNo,'No han venido')+kpi(nPen,'Pendientes');
+    kpi(ses.length,'Citas')+kpi(nSi,'Han venido','v')+kpi(nNo,'No han venido','n')+kpi(nPen,'Pendientes','p');
 
   $('#filtrosDia').hidden = !ses.length;
   const cont = $('#listaDia');
@@ -1416,7 +1420,7 @@ $('#vTodos').addEventListener('click', ()=>{ diaVista='todos'; $('#vTodos').clas
 $('#vPend').addEventListener('click', ()=>{ diaVista='pendientes'; $('#vPend').classList.add('on'); $('#vTodos').classList.remove('on'); renderDia(); });
 $('#oHora').addEventListener('click', ()=>{ diaOrden='hora'; $('#oHora').classList.add('on'); $('#oNombre').classList.remove('on'); renderDia(); });
 $('#oNombre').addEventListener('click', ()=>{ diaOrden='nombre'; $('#oNombre').classList.add('on'); $('#oHora').classList.remove('on'); renderDia(); });
-function kpi(v,l){ return '<div class="kpi"><b>'+v+'</b><span>'+l+'</span></div>'; }
+function kpi(v,l,tono){ return '<div class="kpi'+(tono?' '+tono:'')+'"><b>'+v+'</b><span>'+l+'</span></div>'; }
 
 function cardSesion(s){
   const p = pacientePorId(s.pacienteId);
@@ -1965,7 +1969,7 @@ function renderInformeDia(){
   let h = '';
   const avisos = [];
   if(pend) avisos.push(pend+' cita'+(pend===1?'':'s')+' sin marcar asistencia');
-  if(primeras) avisos.push(primeras+' 1ª sesión'+(primeras===1?'':'es')+' (sin informe de seguimiento)');
+  if(primeras) avisos.push(primeras+(primeras===1?' 1ª sesión':' 1ª sesiones')+' (sin informe de seguimiento)');
   if(avisos.length) h += '<div class="card suave" style="font-size:13.5px">No se incluyen: '+avisos.join(' · ')+'.</div>';
   h += listos.map(s=>{
     return '<div class="card bloque-informe" data-sid="'+s.id+'">'+
@@ -2012,7 +2016,7 @@ function pRect(x,y,w,h,r){
     +'h-'+(w-br-bl)+(bl?('a'+bl+','+bl+' 0 0 1 -'+bl+',-'+bl):'')
     +'v-'+(h-bl-tl)+(tl?('a'+tl+','+tl+' 0 0 1 '+tl+',-'+tl):'')+'z';
 }
-function tile(l,v,s){ return '<div class="stat"><span class="l">'+esc(l)+'</span><b>'+v+'</b>'+(s?('<span class="s">'+esc(s)+'</span>'):'')+'</div>'; }
+function tile(l,v,s,tono){ return '<div class="stat'+(tono?' '+tono:'')+'"><span class="l">'+esc(l)+'</span><b>'+v+'</b>'+(s?('<span class="s">'+esc(s)+'</span>'):'')+'</div>'; }
 function leyenda(items){
   return '<div class="leyenda">'+items.map(i=>'<span><i style="background:'+i.color+'"></i>'+esc(i.label)+' · '+i.n+'</span>').join('')+'</div>';
 }
@@ -2170,9 +2174,9 @@ function renderStats(){
   h += '<div class="card"><h2 style="font-size:16px">El día · '+fmtFecha(fechaActual)+'</h2>';
   h += '<div class="stat-grid">';
   h += tile('Citas', dia.length, '');
-  h += tile('Asisten', dSi.length, (dSi.length+dNo.length) ? pctDe(dSi.length, dSi.length+dNo.length)+'% de las marcadas' : '');
-  h += tile('No asisten', dNo.length, '');
-  h += tile('Pendientes', dia.length-dSi.length-dNo.length, '');
+  h += tile('Asisten', dSi.length, (dSi.length+dNo.length) ? pctDe(dSi.length, dSi.length+dNo.length)+'% de las marcadas' : '', 'v');
+  h += tile('No asisten', dNo.length, '', 'n');
+  h += tile('Pendientes', dia.length-dSi.length-dNo.length, '', 'p');
   h += tile('Con mejoría', dEv.mejor, dEvTot ? 'de '+dEvTot+' valorados' : 'sin valoraciones aún');
   h += tile('Altas hoy', altasHoy, '');
   h += '</div>';
@@ -2278,7 +2282,7 @@ function renderPacientes(){
     return '<div class="pac-lin" data-pid="'+p.id+'" tabindex="0" role="button" aria-label="Abrir ficha de '+esc(p.nombre)+'">'+
       '<span class="nombre">'+esc(p.nombre)+'</span>'+
       '<span class="chip gris" title="Código pseudoanónimo">'+esc(codigoPaciente(p))+'</span>'+
-      '<span class="chip gris">'+asistidas+' sesión'+(asistidas===1?'':'es')+'</span>'+
+      '<span class="chip gris">'+asistidas+(asistidas===1?' sesión':' sesiones')+'</span>'+
       (p.alta?'<span class="chip verde">Alta</span>':'<span class="chip azul">En tratamiento</span>')+
       '</div>';
   }).join('');
