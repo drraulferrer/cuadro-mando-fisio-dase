@@ -189,6 +189,34 @@ select.campo-sel{
 .mf-campo>span{font-size:11.5px; color:var(--texto-suave)}   /* sin uppercase: preserva «µs» (µ→Μ al mayusculizar) */
 .mf-campo input{width:100%; border:1px solid var(--borde); border-radius:7px; padding:8px 9px; font-variant-numeric:tabular-nums}
 
+/* ---- editor del informe de alta completo ---- */
+#altaInfForm{max-height:64vh; overflow:auto; margin-right:-4px; padding-right:6px}
+.ai-ident{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px 12px; margin-bottom:12px}
+.ai-mini{display:flex; flex-direction:column; gap:3px}
+.ai-mini>span{font-size:11.5px; color:var(--texto-suave)}
+.ai-mini select{border:1px solid var(--borde); border-radius:7px; padding:7px 8px; background:var(--superficie)}
+.ai-mini.ai-ro{background:#F7FAFB; border:1px solid var(--borde); border-radius:8px; padding:7px 9px}
+.ai-mini.ai-ro b{font-size:13px; font-weight:600}
+.ai-secc{margin-bottom:12px}
+.ai-secc>label{display:block; font-size:12.5px; font-weight:650; color:var(--azul); margin-bottom:4px}
+.ai-secc textarea{width:100%; border:1px solid var(--borde); border-radius:8px; padding:9px; min-height:64px; resize:vertical}
+
+/* ---- área/estilos de impresión (PDF vía «Guardar como PDF») ---- */
+#printArea{display:none}
+@media print{
+  body{background:#fff}
+  body>*{display:none !important}
+  body.imprimiendo #printArea{display:block !important; padding:0; color:#000; font:12pt/1.5 Georgia, "Times New Roman", serif}
+  #printArea h1{font-size:16pt; margin:0 0 4pt; border-bottom:2px solid #000; padding-bottom:4pt}
+  #printArea h2{font-size:12.5pt; margin:12pt 0 2pt; color:#000}
+  #printArea p{margin:2pt 0 6pt}
+  #printArea table.ident{border-collapse:collapse; width:100%; margin:8pt 0 4pt; font-size:10.5pt}
+  #printArea table.ident th{text-align:left; width:38%; padding:2pt 8pt 2pt 0; vertical-align:top; color:#333; font-weight:600}
+  #printArea table.ident td{padding:2pt 0; vertical-align:top}
+  #printArea .firma{margin-top:20pt; padding-top:8pt; border-top:1px solid #000}
+  @page{margin:16mm}
+}
+
 /* ---- tabla de ejercicios ---- */
 .ejercicios{width:100%; border-collapse:collapse; font-size:14px}
 .ejercicios th{font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--texto-suave); text-align:left; padding:2px 6px 4px 0}
@@ -412,6 +440,14 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
 <!-- ============ COPIA DE SEGURIDAD ============ -->
 <section id="tab-copia" hidden>
   <div class="card">
+    <h2 style="font-size:16px; margin-bottom:4px">Profesional y centro</h2>
+    <p class="suave" style="font-size:13.5px; margin:0 0 8px">
+      Para la firma y la identificación de los informes de alta. Se guarda aparte y se reutiliza.
+    </p>
+    <div class="ai-ident" id="configProf"></div>
+  </div>
+
+  <div class="card">
     <h2 style="font-size:16px; margin-bottom:8px">Copia de seguridad y exportación</h2>
     <p class="suave" style="font-size:14px">
       Todo se guarda en el almacenamiento local de este navegador. Exporta una copia con
@@ -623,6 +659,26 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
   </div>
 </div>
 
+<div class="modal" id="modalAltaInforme" role="dialog" aria-modal="true" aria-labelledby="tituloAltaInf">
+  <div class="caja" style="max-width:min(920px, 96vw)">
+    <div class="fila-botones" style="justify-content:space-between; align-items:baseline">
+      <h2 id="tituloAltaInf">Informe de alta completo</h2>
+      <span class="suave" id="altaInfAviso" style="font-size:12.5px"></span>
+    </div>
+    <p class="suave" style="font-size:13px; margin:2px 0 6px">
+      Se precarga con lo registrado. Revisa y completa los apartados antes de copiar o generar el PDF.
+    </p>
+    <div id="altaInfForm"></div>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cerrar</button>
+      <button class="btn" id="altaInfCopiar">Copiar</button>
+      <button class="btn primario" id="altaInfPDF">Descargar PDF</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea" aria-hidden="true"></div>
+
 <div id="toast" role="status"></div>
 
 <script>
@@ -635,6 +691,9 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
 const LS_DATOS = 'cdFisio.datos.v1';
 const LS_FOTOS = 'cdFisio.fotos.v1';
 const LS_MEDICOS = 'cdFisio.medicos.v1';   // directorio CIAS→médico, aparte para que sobreviva al borrado de datos
+const LS_CONFIG = 'cdFisio.config.v1';     // datos del profesional/centro (reutilizables, persisten)
+const AMBITOS = ['Atención Primaria','Hospitalización','Consultas externas','Rehabilitación','Domicilio'];
+let CONFIG = { fisio:'', colegiado:'', unidad:'Unidad de Fisioterapia', centro:'', ambito:'Atención Primaria' };
 
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -658,7 +717,10 @@ function cargar(){
   try{ medDir = JSON.parse(localStorage.getItem(LS_MEDICOS)); }catch(e){}
   if(medDir && typeof medDir==='object'){ S.medicos = Object.assign(medDir, S.medicos); }
   guardarMedicos();
+  // configuración del profesional (persiste aparte)
+  try{ const c = JSON.parse(localStorage.getItem(LS_CONFIG)); if(c && typeof c==='object') CONFIG = Object.assign(CONFIG, c); }catch(e){}
 }
+function guardarConfig(){ try{ localStorage.setItem(LS_CONFIG, JSON.stringify(CONFIG)); }catch(e){} }
 function guardarMedicos(){
   try{ localStorage.setItem(LS_MEDICOS, JSON.stringify(S.medicos||{})); }catch(e){}
 }
@@ -1056,6 +1118,165 @@ function informeAlta(p){
   L.push('MOTIVO DEL ALTA: '+(p.alta?p.alta.motivo:'—'));
   if(p.alta && p.alta.obs) L.push('Observaciones: '+p.alta.obs);
   return L.join('\n');
+}
+
+/* =====================================================================
+   INFORME DE ALTA COMPLETO (editable · copiar · PDF)
+   Estructura legal/asistencial: identificación, valoración, intervención,
+   evolución, situación al alta, recomendaciones, continuidad, firma.
+   ===================================================================== */
+const TIPOS_INFORME = ['Informe de alta de fisioterapia','Informe de continuidad de fisioterapia'];
+// apartados editables (texto libre) del informe
+const ALTA_SECC = [
+  {k:'motivoDerivacion', t:'Motivo de derivación / consulta', ph:'Motivo funcional por el que llega a fisioterapia (no solo el diagnóstico).'},
+  {k:'dxMedico',         t:'Diagnóstico médico de referencia', ph:'Fractura, cirugía, artrosis, tendinopatía…'},
+  {k:'valoracionInicial',t:'Valoración fisioterápica inicial', ph:'Dolor (EVA/NRS), movilidad, fuerza, función/marcha, escalas, riesgos, contexto.'},
+  {k:'juicioFuncional',  t:'Juicio funcional / diagnóstico de fisioterapia', ph:'Déficit de movilidad, fuerza, control motor, equilibrio, limitación en actividades…'},
+  {k:'objetivos',        t:'Objetivos terapéuticos', ph:'Concretos y medibles (p. ej. reducir dolor en marcha de 7/10 a ≤3/10).'},
+  {k:'intervencion',     t:'Intervención realizada', ph:'Nº de sesiones y periodo, modalidad, técnicas, progresión, educación, adherencia, incidencias.'},
+  {k:'evolucion',        t:'Evolución clínica y funcional', ph:'Cambios de la valoración inicial al alta (comparar medidas iniciales/finales).'},
+  {k:'situacionAlta',    t:'Situación funcional al alta', ph:'Dolor, qué puede/no puede hacer, ayudas, riesgos, preparación para el alta.'},
+  {k:'recomendaciones',  t:'Recomendaciones y programa domiciliario', ph:'Ejercicio (tipo, frecuencia, progresión), manejo de síntomas, signos de alarma, retorno a actividad.'},
+  {k:'continuidad',      t:'Plan de continuidad / derivación / reconsulta', ph:'Alta definitiva, autocuidado, derivación a AP/especializada, recurso comunitario, reevaluación.'},
+  {k:'informacionPaciente', t:'Información facilitada al paciente / cuidador', ph:'Información dada, comprensión, objetivos consensuados, consentimiento si procede.'},
+  {k:'incidencias',      t:'Incidencias o eventos adversos', ph:'Reagudizaciones, caídas, intolerancias, abandono, derivación médica… (si los hubo).'}
+];
+function informeAltaDefaults(p){
+  const {asistidas, ev, pa} = resumenEvolucion(p.id);
+  const f1 = primeraSesionFecha(p.id);
+  const fAlta = p.alta ? p.alta.fecha : (asistidas.length?asistidas[asistidas.length-1].fecha:null);
+  const noAsist = sesionesDePaciente(p.id).filter(s=>s.asistencia==='no').length;
+  const ejTipos = [...new Set(asistidas.flatMap(s=>s.ejercicios.map(e=>(e.tipo||'').trim())).filter(Boolean))];
+  const medTipos = [...new Set(asistidas.flatMap(s=>(s.medios||[]).map(m=>MEDIOS_DEF[m.tipo]?MEDIOS_DEF[m.tipo].nombre:m.tipo)))];
+  const tecnicas = [];
+  if(ejTipos.length) tecnicas.push('ejercicio terapéutico ('+ejTipos.join(', ')+')');
+  if(medTipos.length) tecnicas.push('medios físicos ('+medTipos.join(', ')+')');
+  const evTot = ev.mejor+ev.igual+ev.peor;
+  let evTxt='';
+  if(evTot){
+    if(ev.mejor>ev.igual+ev.peor) evTxt='Evolución favorable, con mejoría clínica a lo largo del tratamiento. ';
+    else if(ev.peor>ev.mejor) evTxt='Evolución desfavorable respecto al inicio. ';
+    else evTxt='Evolución parcial, con cambios variables entre sesiones. ';
+  }
+  const paTot=pa.si+pa.parcial+pa.no;
+  let adh='';
+  if(paTot) adh='Adherencia a la pauta domiciliaria: '+(pa.si>=pa.parcial+pa.no?'buena':(pa.no>pa.si?'baja':'parcial'))+'. ';
+  const ultReco=[...asistidas].reverse().map(s=>s.recomendaciones).find(r=>(r||'').trim())||'';
+  const ultEj=[...asistidas].reverse().find(s=>s.ejercicios.length);
+  let reco='';
+  if(ultReco) reco+=ultReco.trim()+'\n';
+  if(ultEj) reco+='Programa domiciliario: '+ultEj.ejercicios.map(narraEjercicio).join('; ')+'.';
+  return {
+    tipoInforme:'Informe de alta de fisioterapia',
+    ambito: CONFIG.ambito||'Atención Primaria',
+    sexo: p.sexo||'',
+    motivoDerivacion:'', dxMedico:'', valoracionInicial:'', juicioFuncional:'', objetivos:'',
+    intervencion: 'Se realizan '+asistidas.length+' sesiones'+(noAsist?(' ('+noAsist+' no asistencias)'):'')+
+      (f1&&fAlta?(' entre el '+fmtFecha(f1)+' y el '+fmtFecha(fAlta)):'')+'. '+
+      (tecnicas.length?('Técnicas: '+tecnicas.join('; ')+'. '):'')+adh,
+    evolucion: (evTxt+(p.alta&&p.alta.estado?('Estado al alta: '+p.alta.estado+'.'):'')).trim(),
+    situacionAlta:'',
+    recomendaciones: reco.trim(),
+    continuidad: p.alta&&p.alta.motivo?('Motivo del alta: '+p.alta.motivo+'.'):'',
+    informacionPaciente:'Se informa al paciente de los objetivos, la evolución y las recomendaciones al alta, que comprende.',
+    incidencias:''
+  };
+}
+function altaInforme(p){   // asegura y devuelve el objeto editable del informe
+  if(!p.alta) return null;
+  if(!p.alta.informe) p.alta.informe = informeAltaDefaults(p);
+  return p.alta.informe;
+}
+function altaCampos(p){
+  const inf = p.alta.informe || {};
+  const {asistidas} = resumenEvolucion(p.id);
+  const f1 = primeraSesionFecha(p.id);
+  const edad = edadDe(p.fnac, p.alta?p.alta.fecha:null);
+  const md = medicoDe(p.cias);
+  return {
+    tipo: inf.tipoInforme || 'Informe de alta de fisioterapia',
+    fVal: f1?fmtFecha(f1):'—',
+    fAlta: p.alta?fmtFecha(p.alta.fecha):'—',
+    ambito: inf.ambito||'—',
+    motivoAlta: p.alta?p.alta.motivo:'—',
+    estadoAlta: p.alta?p.alta.estado:'—',
+    nombre: p.nombre,
+    nacEdad: (p.fnac?fmtFecha(p.fnac):'—')+(edad!=null?(' ('+edad+' años)'):''),
+    sexo: inf.sexo||'—',
+    tis: p.tis4?('…'+p.tis4):'—',
+    centroRef: CONFIG.centro||'—',
+    medico: p.cias?((md.nombre||p.cias)+(md.centro?(' · '+md.centro):'')):'—',
+    fisio: CONFIG.fisio||'—',
+    colegiado: CONFIG.colegiado||'—',
+    unidad: CONFIG.unidad||'—',
+    centro: CONFIG.centro||'—',
+    nSes: asistidas.length
+  };
+}
+function altaSeccionesTexto(p){
+  const inf = altaInforme(p); const c = altaCampos(p);
+  const L=[];
+  L.push(c.tipo.toUpperCase());
+  L.push('');
+  L.push('1. PACIENTE');
+  L.push('  Nombre: '+c.nombre);
+  L.push('  Fecha de nacimiento / edad: '+c.nacEdad);
+  L.push('  Sexo: '+c.sexo);
+  L.push('  TIS (4 últimos): '+c.tis);
+  L.push('  Centro de referencia: '+c.centroRef);
+  L.push('  Médico/profesional derivador: '+c.medico);
+  L.push('');
+  L.push('2. PROFESIONAL Y CENTRO');
+  L.push('  Fisioterapeuta responsable: '+c.fisio+(c.colegiado!=='—'?(' · Nº colegiado: '+c.colegiado):''));
+  L.push('  Unidad/servicio: '+c.unidad);
+  L.push('  Centro sanitario: '+c.centro);
+  L.push('  Ámbito asistencial: '+c.ambito);
+  L.push('');
+  L.push('3. EPISODIO');
+  L.push('  Fecha de valoración inicial: '+c.fVal);
+  L.push('  Fecha de alta: '+c.fAlta);
+  L.push('  Motivo del alta: '+c.motivoAlta);
+  L.push('  Estado al alta: '+c.estadoAlta);
+  let i=4;
+  ALTA_SECC.forEach(sec=>{
+    const v=(inf[sec.k]||'').trim();
+    if(!v) return;
+    L.push('');
+    L.push(i+'. '+sec.t.toUpperCase());
+    v.split('\n').forEach(ln=>L.push('  '+ln));
+    i++;
+  });
+  L.push('');
+  L.push('Firma: '+c.fisio+(c.colegiado!=='—'?(' (Nº colegiado '+c.colegiado+')'):'')+' — '+c.unidad+', '+c.centro);
+  L.push('Fecha del informe: '+c.fAlta);
+  return L.join('\n');
+}
+function altaInformeHTML(p){
+  const inf = altaInforme(p); const c = altaCampos(p);
+  const fila = (k,v)=>'<tr><th>'+esc(k)+'</th><td>'+esc(v)+'</td></tr>';
+  let h = '<h1>'+esc(c.tipo)+'</h1>';
+  h += '<table class="ident"><tbody>';
+  h += fila('Paciente', c.nombre);
+  h += fila('Fecha de nacimiento / edad', c.nacEdad);
+  h += fila('Sexo', c.sexo);
+  h += fila('TIS (4 últimos)', c.tis);
+  h += fila('Centro de referencia', c.centroRef);
+  h += fila('Médico derivador', c.medico);
+  h += fila('Fisioterapeuta', c.fisio+(c.colegiado!=='—'?(' · Nº colegiado '+c.colegiado):''));
+  h += fila('Unidad · Centro', c.unidad+' · '+c.centro);
+  h += fila('Ámbito asistencial', c.ambito);
+  h += fila('Valoración inicial', c.fVal);
+  h += fila('Fecha de alta', c.fAlta);
+  h += fila('Motivo del alta', c.motivoAlta);
+  h += fila('Estado al alta', c.estadoAlta);
+  h += '</tbody></table>';
+  ALTA_SECC.forEach(sec=>{
+    const v=(inf[sec.k]||'').trim(); if(!v) return;
+    h += '<h2>'+esc(sec.t)+'</h2><p>'+esc(v).replace(/\n/g,'<br>')+'</p>';
+  });
+  h += '<div class="firma"><p>Firma: '+esc(c.fisio)+(c.colegiado!=='—'?(' (Nº colegiado '+esc(c.colegiado)+')'):'')+
+       '<br>'+esc(c.unidad)+' · '+esc(c.centro)+'<br>Fecha del informe: '+esc(c.fAlta)+'</p></div>';
+  return h;
 }
 
 function informeHistorial(p){
@@ -2057,7 +2278,7 @@ function renderFicha(){
   h += '<div class="fila-botones" style="margin-top:14px">';
   h += '<button class="btn" data-a="historial">📋 Informe del historial</button>';
   if(p.alta){
-    h += '<button class="btn primario" data-a="informe-alta">📋 Informe de alta</button>';
+    h += '<button class="btn primario" data-a="informe-alta">📋 Informe de alta completo</button>';
     h += '<button class="btn" data-a="reabrir">Reabrir (anular alta)</button>';
   } else {
     h += '<button class="btn primario" data-a="alta">Dar de alta</button>';
@@ -2108,7 +2329,7 @@ function renderFicha(){
     if(a==='volver'){ fichaPacienteId=null; renderPacientes(); }
     else if(a==='edit-nombre') abrirEditarNombre(p.id);
     else if(a==='historial') abrirInforme('Historial — '+p.nombre, informeHistorial(p));
-    else if(a==='informe-alta') abrirInforme('Informe de alta — '+p.nombre, informeAlta(p));
+    else if(a==='informe-alta') abrirInformeAlta(p.id);
     else if(a==='alta') abrirAlta(p.id);
     else if(a==='reabrir'){ p.alta=null; guardar(); renderFicha(); toast('Alta anulada; el paciente vuelve a estar en tratamiento'); }
     else if(a==='borrar-pac'){
@@ -2147,7 +2368,65 @@ $('#altaGuardar').addEventListener('click', ()=>{
   };
   guardar(); cerrarModales();
   renderDia();
-  abrirInforme('Informe de alta — '+p.nombre, informeAlta(p));
+  abrirInformeAlta(p.id);   // abre el editor del informe de alta completo, ya precargado
+});
+
+/* =====================================================================
+   EDITOR DEL INFORME DE ALTA COMPLETO
+   ===================================================================== */
+let altaInfPacienteId = null;
+function abrirInformeAlta(pid){
+  const p = pacientePorId(pid); if(!p || !p.alta) return;
+  altaInfPacienteId = pid;
+  altaInforme(p);                 // asegura p.alta.informe (defaults)
+  const c = altaCampos(p);
+  $('#tituloAltaInf').textContent = 'Informe de alta — '+p.nombre;
+  $('#altaInfAviso').textContent = (CONFIG.fisio && CONFIG.centro) ? '' : '⚠️ Completa tus datos de profesional en «Datos» para la firma.';
+  $('#altaInfForm').innerHTML = renderAltaInfForm(p, c);
+  abrirModal('modalAltaInforme');
+}
+function renderAltaInfForm(p, c){
+  const inf = p.alta.informe;
+  let h = '';
+  // identificación (auto, con selects editables donde procede)
+  h += '<div class="ai-ident">';
+  h += aiCampo('Tipo de informe', '<select data-ai="tipoInforme">'+TIPOS_INFORME.map(t=>'<option'+(inf.tipoInforme===t?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select>');
+  h += aiCampo('Ámbito asistencial', '<select data-ai="ambito">'+AMBITOS.map(t=>'<option'+(inf.ambito===t?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select>');
+  h += aiCampo('Sexo', '<select data-ai="sexo">'+['','Mujer','Hombre','Otro'].map(t=>'<option value="'+esc(t)+'"'+((inf.sexo||'')===t?' selected':'')+'>'+(t||'—')+'</option>').join('')+'</select>');
+  h += aiDato('Paciente', c.nombre+' · '+c.nacEdad+' · TIS '+c.tis);
+  h += aiDato('Derivación', c.medico+' · Centro ref.: '+c.centroRef);
+  h += aiDato('Episodio', 'Valoración '+c.fVal+' → Alta '+c.fAlta+' · '+c.nSes+' sesiones · Motivo: '+c.motivoAlta);
+  h += aiDato('Profesional', c.fisio+(c.colegiado!=='—'?(' (col. '+c.colegiado+')'):'')+' · '+c.unidad+' · '+c.centro);
+  h += '</div>';
+  // apartados editables
+  ALTA_SECC.forEach(sec=>{
+    h += '<div class="ai-secc"><label>'+esc(sec.t)+'</label>'+
+      '<textarea data-ai="'+sec.k+'" placeholder="'+esc(sec.ph)+'">'+esc(inf[sec.k]||'')+'</textarea></div>';
+  });
+  return h;
+}
+function aiCampo(l, control){ return '<label class="ai-mini"><span>'+esc(l)+'</span>'+control+'</label>'; }
+function aiDato(l, v){ return '<div class="ai-mini ai-ro"><span>'+esc(l)+'</span><b>'+esc(v)+'</b></div>'; }
+$('#altaInfForm').addEventListener('input', ev=>{
+  const el = ev.target.closest('[data-ai]'); if(!el) return;
+  const p = pacientePorId(altaInfPacienteId); if(!p || !p.alta.informe) return;
+  const k = el.dataset.ai;
+  p.alta.informe[k] = el.value;
+  if(k==='sexo') p.sexo = el.value;   // se guarda también en el paciente
+  guardar();
+});
+$('#altaInfCopiar').addEventListener('click', ()=>{
+  const p = pacientePorId(altaInfPacienteId); if(!p) return;
+  copiarTexto(altaSeccionesTexto(p));
+});
+$('#altaInfPDF').addEventListener('click', ()=>{
+  const p = pacientePorId(altaInfPacienteId); if(!p) return;
+  $('#printArea').innerHTML = altaInformeHTML(p);
+  document.body.classList.add('imprimiendo');
+  const limpiar = ()=>{ document.body.classList.remove('imprimiendo'); window.removeEventListener('afterprint', limpiar); };
+  window.addEventListener('afterprint', limpiar);
+  window.print();
+  setTimeout(limpiar, 1500);   // respaldo si afterprint no dispara
 });
 
 /* =====================================================================
@@ -2175,6 +2454,23 @@ function renderCopia(){
     S.pacientes.length+' pacientes · '+S.sesiones.length+' sesiones · '+nFotos+' fotos guardadas · '+
     'ocupación aproximada: '+(bytes/1024/1024).toFixed(1)+' MB (límite habitual del navegador: ~5 MB).';
   renderMedicos();
+  renderConfigProf();
+}
+function renderConfigProf(){
+  const cont = $('#configProf'); if(!cont) return;
+  const campo = (k,l,control)=>'<label class="ai-mini"><span>'+esc(l)+'</span>'+control+'</label>';
+  const inp = (k,ph)=>'<input type="text" data-cfg="'+k+'" value="'+esc(CONFIG[k]||'')+'" placeholder="'+esc(ph||'')+'" style="border:1px solid var(--borde); border-radius:7px; padding:7px 8px">';
+  cont.innerHTML =
+    campo('fisio','Fisioterapeuta responsable', inp('fisio','Nombre y apellidos'))+
+    campo('colegiado','Nº de colegiado', inp('colegiado','p. ej. 1234'))+
+    campo('unidad','Unidad / servicio', inp('unidad','Unidad de Fisioterapia'))+
+    campo('centro','Centro sanitario', inp('centro','Nombre del centro'))+
+    campo('ambito','Ámbito asistencial', '<select data-cfg="ambito" style="border:1px solid var(--borde); border-radius:7px; padding:7px 8px">'+AMBITOS.map(a=>'<option'+(CONFIG.ambito===a?' selected':'')+'>'+esc(a)+'</option>').join('')+'</select>');
+  cont.onchange = cont.oninput = ev=>{
+    const el = ev.target.closest('[data-cfg]'); if(!el) return;
+    CONFIG[el.dataset.cfg] = el.value;
+    guardarConfig();
+  };
 }
 function renderMedicos(){
   const cont = $('#listaMedicos');
@@ -2234,7 +2530,7 @@ $('#btnExportar').addEventListener('click', ()=>{
   const pseudo = $('#chkPseudo').checked;
   const datos = {
     app:'consulta-diaria-fisio', version:S.version, exportado:new Date().toISOString(),
-    pseudoanonimizado: pseudo, pacientes: pacientesExport(pseudo), sesiones: S.sesiones, medicos: S.medicos
+    pseudoanonimizado: pseudo, pacientes: pacientesExport(pseudo), sesiones: S.sesiones, medicos: S.medicos, config: CONFIG
   };
   descargar('consulta-fisio-'+hoyISO()+(pseudo?'-pseudo':'')+'.json', JSON.stringify(datos, null, 1), 'application/json');
   if(pseudo) toast('Copia pseudoanonimizada: los nombres van sustituidos por el código');
@@ -2334,6 +2630,7 @@ $('#inputImportar').addEventListener('change', ev=>{
       const medFus = Object.assign({}, S.medicos, d.medicos||{});   // se conserva el directorio de médicos y se fusiona con el de la copia
       S = { version:1, pacientes:d.pacientes, sesiones:d.sesiones, medicos:medFus };
       S.pacientes.forEach(p=>{ if(p.cipa4 && !p.tis4){ p.tis4 = p.cipa4; delete p.cipa4; } });   // copias antiguas (CIPA)
+      if(d.config && typeof d.config==='object'){ CONFIG = Object.assign(CONFIG, d.config); guardarConfig(); }
       guardar(); guardarMedicos(); renderCopia(); renderDia();
       toast('Copia importada correctamente');
     }catch(e){ toast('El archivo no es una copia válida de esta aplicación'); }

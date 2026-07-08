@@ -128,9 +128,13 @@ diario con pacientes en la consulta:
    seguimiento** y no aparecen en el listado.
 5. **Historial por paciente** — todas sus sesiones, con marca de **1ª sesión** (se marca a mano
    cuando corresponde) y resumen de evolución y adherencia.
-6. **Alta con informe** — al dar el alta eliges **estado** y **motivo**; se genera un **informe de
-   alta** con el periodo de tratamiento, sesiones realizadas y no asistencias, evolución global,
-   adherencia y último plan de ejercicio, también para copiar y pegar. El alta se puede anular.
+6. **Alta e informe de alta completo** — al dar el alta eliges **estado** y **motivo**; se abre el
+   **informe de alta completo** (con validez asistencial/legal): 16 apartados (identificación,
+   valoración fisioterápica, juicio funcional, objetivos, intervención, evolución, situación al
+   alta, recomendaciones, plan de continuidad, información al paciente, incidencias, firma). Se
+   **precarga** con lo registrado, es **editable**, y se puede **copiar** (para el evolutivo) o
+   **descargar en PDF**. Los datos del profesional/centro se configuran una vez en *Datos*. El alta
+   se puede anular.
 7. **Estadísticas** — pestaña visual con **el día** (citas, asistencia, mejorías, altas, evolución
    y pauta de hoy) y **el histórico** con filtro de periodo (4/12 semanas, 6 meses, todo):
    efectividad clínica (% de sesiones con mejoría), asistencia y ausencias por semana, adherencia
