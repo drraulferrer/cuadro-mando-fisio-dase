@@ -130,6 +130,16 @@ respetado. Paletas de gráficos verificadas para daltonismo (separación CVD) y 
 - En **citas de valoración (V)**: nota de que normalmente aún no hay evolución que registrar.
 - **Ejercicios pautados**: series y repeticiones con **steppers − / +**; descanso como desplegable;
   botón «Repetir los de la sesión anterior». Se añaden desde el **catálogo tocable** (ver 🛠).
+- **Medios físicos** (bloque **plegable**, colapsado por defecto para no saturar): se añaden por
+  tipo desde un selector y cada uno muestra **solo sus parámetros**:
+  - **TENS**: frecuencia (Hz), tiempo de impulso (µs), tiempo de aplicación (min).
+  - **Microonda**: potencia (W), tiempo (min).
+  - **Onda corta**: frecuencia, **modo continuo/pulsado**, potencia (W), tiempo (min), aplicador
+    (tipo/posición); si es **pulsado**: duración de pulso (µs), frecuencia de pulso (Hz) y
+    potencia media/pico (W).
+  - **Infrarrojo**: tiempo de aplicación (min) y distancia (cm) — potencia fija **250 W**.
+- **Recomendaciones domiciliarias** (bloque plegable): texto libre con **frases rápidas**
+  (termoterapia, crioterapia, reposo relativo, higiene postural).
 - **Observaciones** con **frases rápidas** de un toque (distintas si acude / no acude).
 
 ### 4. Informe del día (evolutivo)

@@ -167,6 +167,28 @@ select.campo-sel{
   background:var(--superficie);
 }
 
+/* ---- medios físicos y recomendaciones (bloques plegables) ---- */
+.mf-det{margin-top:12px; border:1px solid var(--borde); border-radius:9px; padding:0 12px}
+.mf-det>summary{
+  cursor:pointer; list-style:none; padding:11px 2px; font-weight:650; font-size:13.5px;
+  color:var(--azul); display:flex; align-items:center; gap:6px;
+}
+.mf-det>summary::-webkit-details-marker{display:none}
+.mf-det>summary::after{content:'▸'; margin-left:auto; color:var(--texto-suave); transition:transform .15s}
+.mf-det[open]>summary::after{transform:rotate(90deg)}
+.mf-det>summary:focus-visible{outline:2px solid var(--azul); outline-offset:2px; border-radius:6px}
+.mf-det[open]{padding-bottom:12px}
+.mf-lista{display:flex; flex-direction:column; gap:10px}
+.mf-item{border:1px solid var(--borde); border-radius:8px; padding:10px 12px; background:#F7FAFB}
+.mf-cab{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+.mf-cab b{font-size:14px}
+.mf-del{border:0; background:none; color:var(--rojo); font-size:15px; min-width:34px; min-height:34px; border-radius:7px; cursor:pointer}
+.mf-modo{margin-bottom:10px}
+.mf-campos{display:flex; flex-wrap:wrap; gap:10px 12px}
+.mf-campo{display:flex; flex-direction:column; gap:4px; flex:1 1 130px; min-width:0}
+.mf-campo>span{font-size:11.5px; color:var(--texto-suave)}   /* sin uppercase: preserva «µs» (µ→Μ al mayusculizar) */
+.mf-campo input{width:100%; border:1px solid var(--borde); border-radius:7px; padding:8px 9px; font-variant-numeric:tabular-nums}
+
 /* ---- tabla de ejercicios ---- */
 .ejercicios{width:100%; border-collapse:collapse; font-size:14px}
 .ejercicios th{font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--texto-suave); text-align:left; padding:2px 6px 4px 0}
@@ -496,6 +518,17 @@ svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Aria
   </div>
 </div>
 
+<div class="modal" id="modalMedio" role="dialog" aria-modal="true" aria-labelledby="tituloMedio">
+  <div class="caja" style="max-width:520px">
+    <h2 id="tituloMedio">Añadir medio físico</h2>
+    <p class="suave" style="font-size:13.5px; margin:0 0 4px">Toca un medio para añadirlo; luego rellenas sus parámetros.</p>
+    <div class="frases" id="medioTipos" style="margin-top:8px"></div>
+    <div class="pie">
+      <button class="btn" data-cerrar>Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modalAlta" role="dialog" aria-modal="true" aria-labelledby="tituloAlta">
   <div class="caja">
     <h2 id="tituloAlta">Alta del paciente</h2>
@@ -757,6 +790,8 @@ function nuevaSesion(pacienteId, fecha, horaCita, primera){
     evolucion:null,                    // mejor | igual | peor
     pauta:null,                        // si | parcial | no
     ejercicios:[],                     // {tipo, series, reps, descanso, notas}
+    medios:[],                         // medios físicos aplicados (ver MEDIOS_DEF)
+    recomendaciones:'',                // recomendaciones domiciliarias (texto)
     obs:''
   };
   S.sesiones.push(ses);
@@ -800,6 +835,77 @@ const FRASES_ALTA = [
   'Se recomienda continuar el ejercicio de forma autónoma.',
   'Se indica volver a consultar si reaparece la clínica.'
 ];
+const FRASES_RECO = [
+  'Termoterapia domiciliaria (calor local).',
+  'Crioterapia domiciliaria (frío local).',
+  'Reposo relativo.',
+  'Higiene postural.'
+];
+
+/* ---------- medios físicos ----------
+   Cada tipo define sus campos (µ = micro). Onda corta muestra los campos de
+   pulso solo cuando el modo es «pulsado». */
+const MU = 'µ';  // µ
+const MEDIOS_DEF = {
+  TENS: { nombre:'TENS', campos:[
+    {k:'frecuencia', l:'Frecuencia', u:'Hz', ph:'80'},
+    {k:'impulso',    l:'Tiempo de impulso', u:MU+'s', ph:'200'},
+    {k:'tiempo',     l:'Tiempo de aplicación', u:'min', ph:'20'}
+  ]},
+  Microonda: { nombre:'Microonda', campos:[
+    {k:'potencia', l:'Potencia', u:'W', ph:'50'},
+    {k:'tiempo',   l:'Tiempo', u:'min', ph:'15'}
+  ]},
+  OndaCorta: { nombre:'Onda corta', modo:true, campos:[
+    {k:'frecuencia', l:'Frecuencia', u:'', ph:'27,12 MHz'},
+    {k:'potencia',   l:'Potencia', u:'W', ph:'100'},
+    {k:'tiempo',     l:'Tiempo', u:'min', ph:'15'},
+    {k:'aplicador',  l:'Aplicador (tipo/posición)', u:'', ph:'p. ej. inductor coplanar'}
+  ], camposPulsado:[
+    {k:'pulsoDur',  l:'Duración de pulso', u:MU+'s', ph:'400'},
+    {k:'pulsoFrec', l:'Frecuencia de pulso', u:'Hz', ph:'100'},
+    {k:'potMedia',  l:'Potencia media', u:'W', ph:''},
+    {k:'potPico',   l:'Potencia pico', u:'W', ph:''}
+  ]},
+  Infrarrojo: { nombre:'Infrarrojo', fijo:'250 W', campos:[
+    {k:'tiempo',    l:'Tiempo de aplicación', u:'min', ph:'15'},
+    {k:'distancia', l:'Distancia', u:'cm', ph:'40'}
+  ]}
+};
+const MEDIOS_DEFECTO = {   // valores iniciales al añadir (editables)
+  TENS: {frecuencia:'80', impulso:'200', tiempo:'20'},
+  Microonda: {potencia:'50', tiempo:'15'},
+  OndaCorta: {modo:'continuo', frecuencia:'27,12 MHz', potencia:'100', tiempo:'15'},
+  Infrarrojo: {tiempo:'15', distancia:'40'}
+};
+function nuevoMedio(tipo){ return Object.assign({tipo}, MEDIOS_DEFECTO[tipo]||{}); }
+function narraMedio(m){
+  const D = MEDIOS_DEF[m.tipo]; if(!D) return '';
+  const val = (k,u)=>{ const v=(m[k]||'').toString().trim(); return v ? v+(u?(' '+u):'') : ''; };
+  if(m.tipo==='TENS'){
+    const p=[val('frecuencia','Hz'),val('impulso',MU+'s'),val('tiempo','min')].filter(Boolean);
+    return 'TENS'+(p.length?' ('+p.join(', ')+')':'');
+  }
+  if(m.tipo==='Microonda'){
+    const p=[val('potencia','W'),val('tiempo','min')].filter(Boolean);
+    return 'Microondas'+(p.length?' ('+p.join(', ')+')':'');
+  }
+  if(m.tipo==='Infrarrojo'){
+    const p=[val('tiempo','min'), m.distancia?('a '+m.distancia+' cm'):''].filter(Boolean);
+    return 'Infrarrojo (250 W'+(p.length?', '+p.join(', '):'')+')';
+  }
+  if(m.tipo==='OndaCorta'){
+    const base=[val('frecuencia',''),val('potencia','W'),val('tiempo','min'),m.aplicador?('aplicador '+m.aplicador):''].filter(Boolean);
+    let s='Onda corta '+(m.modo||'continuo')+(base.length?' ('+base.join(', ')+')':'');
+    if(m.modo==='pulsado'){
+      const pu=[m.pulsoDur?('pulso '+m.pulsoDur+' '+MU+'s'):'', m.pulsoFrec?(m.pulsoFrec+' Hz'):'',
+        m.potMedia?('pot. media '+m.potMedia+' W'):'', m.potPico?('pico '+m.potPico+' W'):''].filter(Boolean);
+      if(pu.length) s+=' ['+pu.join(', ')+']';
+    }
+    return s;
+  }
+  return D.nombre;
+}
 function ejerciciosFrecuentes(){
   const cuenta = {};
   S.sesiones.forEach(s=>s.ejercicios.forEach(e=>{
@@ -807,8 +913,9 @@ function ejerciciosFrecuentes(){
   }));
   return Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]);
 }
-function chipsFrases(lista){
-  return '<div class="frases">'+lista.map(f=>'<button type="button" class="frase-chip" data-a="frase" data-t="'+esc(f)+'">'+esc(f)+'</button>').join('')+'</div>';
+function chipsFrases(lista, target){
+  const tgt = target || 'obs';
+  return '<div class="frases">'+lista.map(f=>'<button type="button" class="frase-chip" data-a="frase" data-tgt="'+tgt+'" data-t="'+esc(f)+'">'+esc(f)+'</button>').join('')+'</div>';
 }
 
 /* ---------- textos para informes ---------- */
@@ -848,10 +955,14 @@ function informeSesion(ses){
   }
   if(ses.evolucion) L.push('Evolución: '+TXT_EVO[ses.evolucion]+'.');
   if(ses.pauta)     L.push('Adherencia: '+TXT_PAUTA[ses.pauta]+'.');
+  if((ses.medios||[]).length){
+    L.push('Medios físicos: '+ses.medios.map(narraMedio).join('; ')+'.');
+  }
   if(ses.ejercicios.length){
     L.push('Ejercicio terapéutico pautado:');
     ses.ejercicios.forEach((e,i)=>L.push(lineaEjercicio(e,i)));
   }
+  if((ses.recomendaciones||'').trim()) L.push('Recomendaciones domiciliarias: '+ses.recomendaciones.trim());
   if(ses.obs) L.push('Observaciones: '+ses.obs);
   return L.join('\n');
 }
@@ -887,9 +998,13 @@ function resumenClinico(ses){
   F.push(ses.tipoCita==='TEL' ? 'Contacto telefónico de seguimiento.' : 'Acude a sesión de fisioterapia.');
   if(ses.evolucion) F.push(NARRA_EVO[ses.evolucion]);
   if(ses.pauta) F.push(NARRA_PAUTA[ses.pauta]);
+  if((ses.medios||[]).length){
+    F.push('Se aplican medios físicos: '+ses.medios.map(narraMedio).join('; ')+'.');
+  }
   if(ses.ejercicios.length){
     F.push('Se mantiene el programa de ejercicio terapéutico pautado ('+ses.ejercicios.map(narraEjercicio).join('; ')+').');
   }
+  if((ses.recomendaciones||'').trim()) F.push('Recomendaciones domiciliarias: '+ses.recomendaciones.trim());
   if(ses.obs) F.push(ses.obs.trim());
   return F.join(' ');
 }
@@ -1103,6 +1218,9 @@ function cardSesion(s){
     if(tieneEjerciciosPrevios(s)) h += '<button class="btn mini" data-a="copiar-ej">Repetir los de la sesión anterior</button>';
     h += '</div></div>';
 
+    h += bloqueMedios(s);
+    h += bloqueRecomendaciones(s);
+
     h += '<div class="campo"><label>Observaciones</label><textarea data-f="obs" placeholder="Valoración, técnica aplicada, incidencias…">'+esc(s.obs)+'</textarea>'+chipsFrases(FRASES_VIENE)+'</div>';
   } else if(s.asistencia==='no'){
     h += '<div class="campo"><label>Observaciones</label><textarea data-f="obs" placeholder="Avisa / no avisa, motivo…">'+esc(s.obs)+'</textarea>'+chipsFrases(FRASES_NOVIENE)+'</div>';
@@ -1121,6 +1239,47 @@ function cardSesion(s){
 function segBtn(s, campo, val, color, etiqueta){
   return '<button data-a="set" data-c="'+campo+'" data-v="'+val+'" class="'+color+(s[campo]===val?' on':'')+'">'+etiqueta+'</button>';
 }
+/* ---- bloque plegable de medios físicos (progressive disclosure) ---- */
+function tarjetaMedio(m, i){
+  const D = MEDIOS_DEF[m.tipo]; if(!D) return '';
+  let h = '<div class="mf-item">';
+  h += '<div class="mf-cab"><b>'+esc(D.nombre)+(D.fijo?(' · '+D.fijo):'')+'</b>';
+  h += '<button class="mf-del" data-a="del-medio" data-i="'+i+'" title="Quitar medio" aria-label="Quitar medio">✕</button></div>';
+  if(D.modo){
+    h += '<div class="mf-modo"><span class="seg">'+
+      '<button data-a="med-modo" data-i="'+i+'" data-v="continuo" class="a'+(m.modo!=='pulsado'?' on':'')+'">Continuo</button>'+
+      '<button data-a="med-modo" data-i="'+i+'" data-v="pulsado" class="a'+(m.modo==='pulsado'?' on':'')+'">Pulsado</button>'+
+      '</span></div>';
+  }
+  h += '<div class="mf-campos">';
+  let campos = D.campos.slice();
+  if(D.modo && m.modo==='pulsado') campos = campos.concat(D.camposPulsado);
+  campos.forEach(c=>{
+    const im = /aplicador/i.test(c.k) ? '' : ' inputmode="decimal"';
+    h += '<label class="mf-campo"><span>'+esc(c.l)+(c.u?(' ('+c.u+')'):'')+'</span>'+
+      '<input type="text"'+im+' data-med="'+i+'" data-mf="'+c.k+'" value="'+esc(m[c.k]||'')+'" placeholder="'+esc(c.ph||'')+'"></label>';
+  });
+  h += '</div></div>';
+  return h;
+}
+function bloqueMedios(s){
+  const hay = (s.medios||[]).length;
+  let h = '<details class="mf-det"'+(hay?' open':'')+'><summary>🔌 Medios físicos'+(hay?(' ('+hay+')'):'')+'</summary>';
+  h += '<div class="mf-lista">';
+  (s.medios||[]).forEach((m,i)=>{ h += tarjetaMedio(m,i); });
+  h += '</div>';
+  h += '<div class="fila-botones" style="margin-top:6px"><button class="btn mini" data-a="add-medio">+ Añadir medio físico</button></div>';
+  h += '</details>';
+  return h;
+}
+function bloqueRecomendaciones(s){
+  const hay = (s.recomendaciones||'').trim();
+  let h = '<details class="mf-det"'+(hay?' open':'')+'><summary>🏠 Recomendaciones domiciliarias</summary>';
+  h += '<div style="margin-top:6px"><textarea data-f="recomendaciones" placeholder="Termoterapia, crioterapia, pauta domiciliaria…">'+esc(s.recomendaciones||'')+'</textarea>'+chipsFrases(FRASES_RECO,'recomendaciones')+'</div>';
+  h += '</details>';
+  return h;
+}
+
 function tieneEjerciciosPrevios(s){
   return !!ejerciciosPrevios(s);
 }
@@ -1146,12 +1305,19 @@ function enlazarCardSesiones(cont){
       guardar(); return;
     }
     if(a==='frase'){
-      const ta = card.querySelector('textarea[data-f=obs]'); if(!ta) return;
+      const tgt = btn.dataset.tgt || 'obs';
+      const ta = card.querySelector('textarea[data-f='+tgt+']'); if(!ta) return;
       ta.value = (ta.value.trim() ? ta.value.trim()+' ' : '') + btn.dataset.t;
-      s.obs = ta.value;
+      s[tgt] = ta.value;
       guardar(); return;
     }
     if(a==='add-ej'){ abrirPickerEjercicio(s); return; }
+    if(a==='add-medio'){ abrirPickerMedio(s); return; }
+    if(a==='del-medio'){ s.medios.splice(+btn.dataset.i,1); guardar(); renderDia(); return; }
+    if(a==='med-modo'){
+      const m = s.medios[+btn.dataset.i]; if(m){ m.modo = btn.dataset.v; guardar(); renderDia(); }
+      return;
+    }
     if(a==='viene'){ s.asistencia='si'; if(!s.horaLlegada) s.horaLlegada=ahoraHM(); }
     else if(a==='noviene'){ s.asistencia='no'; }
     else if(a==='reset'){ s.asistencia='pendiente'; s.horaLlegada=null; }
@@ -1171,9 +1337,14 @@ function enlazarCardSesiones(cont){
     guardar(); renderDia();
   };
   cont.onchange = ev=>{
-    const el = ev.target.closest('[data-f]'); if(!el) return;
     const card = ev.target.closest('[data-sid]'); if(!card) return;
     const s = S.sesiones.find(x=>x.id===card.dataset.sid); if(!s) return;
+    const t = ev.target;
+    if(t.dataset.mf!=null && t.dataset.med!=null){        // campo de un medio físico
+      const m = s.medios[+t.dataset.med]; if(m){ m[t.dataset.mf]=t.value; guardar(); }
+      return;
+    }
+    const el = t.closest('[data-f]'); if(!el) return;
     const f = el.dataset.f;
     if(el.dataset.ej!=null){ const e=s.ejercicios[+el.dataset.ej]; if(e) e[f]=el.value; }
     else if(f==='primera'){ s.primera = el.checked; guardar(); renderDia(); return; }
@@ -1256,6 +1427,23 @@ $('#ejOtro').addEventListener('click', ()=>{
   const s = S.sesiones.find(x=>x.id===pickerSesionId); if(!s) return;
   s.ejercicios.push({tipo:'', series:'', reps:'', descanso:'', notas:''});
   guardar(); cerrarModales(); renderDia();
+});
+
+/* ---- selector de medios físicos ---- */
+let pickerMedioSesionId = null;
+function abrirPickerMedio(s){
+  pickerMedioSesionId = s.id;
+  $('#medioTipos').innerHTML = Object.keys(MEDIOS_DEF).map(tipo=>
+    '<button type="button" class="frase-chip" data-medio="'+tipo+'">'+esc(MEDIOS_DEF[tipo].nombre)+'</button>').join('');
+  abrirModal('modalMedio');
+}
+$('#medioTipos').addEventListener('click', ev=>{
+  const chip = ev.target.closest('[data-medio]'); if(!chip) return;
+  const s = S.sesiones.find(x=>x.id===pickerMedioSesionId); if(!s) return;
+  if(!s.medios) s.medios = [];
+  s.medios.push(nuevoMedio(chip.dataset.medio));
+  guardar(); cerrarModales(); renderDia();
+  toast('Añadido: '+MEDIOS_DEF[chip.dataset.medio].nombre);
 });
 
 /* ---- añadir paciente a mano ---- */
@@ -1890,9 +2078,11 @@ function renderFicha(){
     else h += '<span class="chip gris">Sin marcar</span>';
     if(s.evolucion) h += ' <span class="chip '+(s.evolucion==='mejor'?'verde':s.evolucion==='igual'?'ambar':'rojo')+'">'+({mejor:'Mejor',igual:'Igual',peor:'Peor'})[s.evolucion]+'</span>';
     if(s.pauta) h += ' <span class="chip gris">Pauta: '+({si:'sí',parcial:'parcial',no:'no'})[s.pauta]+'</span>';
+    if((s.medios||[]).length) h += '<div class="suave" style="font-size:13.5px">🔌 '+esc(s.medios.map(narraMedio).join('; '))+'</div>';
     if(s.ejercicios.length){
       h += '<ul>'+s.ejercicios.map((e,i)=>'<li>'+esc(lineaEjercicio(e,i).replace(/^\s*\d+\.\s*/,''))+'</li>').join('')+'</ul>';
     }
+    if((s.recomendaciones||'').trim()) h += '<div class="suave" style="font-size:13.5px">🏠 '+esc(s.recomendaciones.trim())+'</div>';
     if(s.obs) h += '<div class="suave" style="font-size:13.5px">'+esc(s.obs)+'</div>';
     h += '</div>';
   });
@@ -2085,7 +2275,9 @@ function filasExport(pseudo){
       'Asistencia': TXT_ASIS[s.asistencia]||'', 'Hora llegada': s.horaLlegada||'',
       '1ª sesión': s.primera?'Sí':'', 'Evolución': s.evolucion?TXT_EVO_CORTO[s.evolucion]:'',
       'Cumple pauta': s.pauta?TXT_PAUTA_CORTO[s.pauta]:'',
+      'Medios físicos': (s.medios||[]).map(narraMedio).join(' | '),
       'Ejercicios': s.ejercicios.map((e,i)=>lineaEjercicio(e,i).trim()).join(' | '),
+      'Recomendaciones': s.recomendaciones||'',
       'Observaciones': s.obs||''
     }));
     s.ejercicios.forEach(e=>{
