@@ -71,11 +71,17 @@ respetado. Paletas de gráficos verificadas para daltonismo (separación CVD) y 
   por el código (casilla marcada por defecto).
 - Uso previsto: dispositivo propio y bloqueado; exportar copia (.json) con regularidad; borrar
   los datos de navegación borra también los de la app.
-- Claves de almacenamiento:
-  - `cdFisio.datos.v1` — pacientes y sesiones.
-  - `cdFisio.fotos.v1` — fotos de las hojas por día.
+- Claves / almacenes:
+  - `cdFisio.datos.v1` (localStorage) — pacientes y sesiones (**texto**; ~cientos de bytes por
+    sesión, así que el historial cabe años dentro del cupo de ~5 MB).
+  - **Fotos en IndexedDB** (`cdFisioFotos`, cuota amplia), **fuera** del cupo de localStorage, para
+    que las fotos no compitan con el historial. Respaldo a `cdFisio.fotos.v1` (localStorage) si el
+    navegador no tuviera IndexedDB. **Autopurga**: las fotos de más de `FOTO_DIAS_MAX` (21) días se
+    borran solas. Migración automática: las fotos que estuvieran en localStorage se trasladan a
+    IndexedDB al arrancar (liberando el cupo).
   - `cdFisio.medicos.v1` — **directorio de médicos** (CIAS → nombre/centro), **independiente**:
     sobrevive al “Borrar todos los datos”.
+  - `cdFisio.config.v1` — datos del profesional/centro (firma de los informes).
 
 ## Data model (común)
 

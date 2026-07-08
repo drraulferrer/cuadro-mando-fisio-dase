@@ -153,8 +153,10 @@ diario con pacientes en la consulta:
    equivalente que también abre Excel. Botón aparte para limpiar fotos antiguas.
 
 > **Privacidad:** a diferencia del cuadro de mando, esta app sí maneja datos de pacientes.
-> **Todo se guarda únicamente en el navegador del dispositivo** (localStorage); no se envía nada a
-> ningún servidor. Úsala en un dispositivo propio y bloqueado, exporta copias con regularidad y
+> **Todo se guarda únicamente en el navegador del dispositivo**; no se envía nada a ningún servidor.
+> El historial (texto) va en localStorage —muy poco espacio por sesión, así que cabe años— y las
+> **fotos de las hojas van en IndexedDB** (cuota amplia, aparte del historial) y **se autoborran a
+> los 21 días**, de modo que no hay que vaciar datos para hacer sitio. Úsala en un dispositivo propio y bloqueado, exporta copias con regularidad y
 > ten en cuenta que borrar los datos de navegación borra también los de la app.
 
 ### Publicar en GitHub Pages (acceso desde el navegador)
