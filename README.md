@@ -196,6 +196,23 @@ node review.js          # ejecuta la batería de verificación contra el spec (j
   plantillas de presentación, medidores y lectura de PDF.
 - `vendor/` — librerías embebidas: SheetJS (Excel) y pdf.js + worker (PDF), todo offline.
 
+## Herramientas de desarrollo (MCP)
+
+El proyecto incluye la configuración del servidor MCP de [21st.dev](https://21st.dev) en
+`.mcp.json` (transporte HTTP). Para usarlo con Claude Code, exporta tu clave antes de abrir el
+cliente:
+
+```bash
+export API_KEY_21ST="tu-clave"
+```
+
+La configuración referencia la variable `${API_KEY_21ST}`, de modo que la clave nunca queda escrita
+en el repositorio. Equivale a ejecutar:
+
+```bash
+claude mcp add --transport http 21st https://21st.dev/api/mcp --header "x-api-key: $API_KEY_21ST"
+```
+
 ## Regla del semáforo
 
 - **Verde:** cumple la meta. **Ámbar:** cerca de la meta. **Rojo:** lejos / en el punto de partida.

@@ -537,7 +537,9 @@
       var pa = punto(fm, r - 11), pb = punto(fm, r + 4);
       metaTick = '<line class="g-meta" x1="' + pa[0].toFixed(1) + '" y1="' + pa[1].toFixed(1) + '" x2="' + pb[0].toFixed(1) + '" y2="' + pb[1].toFixed(1) + '"/>';
     }
-    var svg = '<svg viewBox="0 0 200 108" role="img">' +
+    var vTxt = v === null ? "sin dato" : fmt(v, v % 1 ? 2 : 0) + (c.Unidad ? " " + c.Unidad : "");
+    var aria = (c.Indicador + ". " + estadoLabel(e) + ". Valor: " + vTxt + ". Meta: " + (c.Meta || "sin meta") + ".").replace(/"/g, "'");
+    var svg = '<svg viewBox="0 0 200 108" role="img" aria-label="' + aria + '">' +
       '<path class="g-bg" d="' + dPath + '"/>' + valArc + metaTick + '</svg>';
     return '<div class="gauge ' + e + '">' +
       '<div class="gcod">' + c.Codigo + infoBtn(c.Codigo) + ' <span class="badge ' + e + '">' + estadoLabel(e) + '</span></div>' +
