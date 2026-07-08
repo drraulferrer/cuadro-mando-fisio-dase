@@ -272,10 +272,17 @@ svg.chart{width:100%; height:auto; display:block}
 svg.chart text{font:11.5px -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; fill:var(--texto-suave)}
 
 /* ---- informe del día ---- */
-.bloque-informe{position:relative}
+.bloque-informe{position:relative; padding:12px 14px}
+.bloque-informe .cab-inf{font-size:15px}
 .bloque-informe pre{
-  white-space:pre-wrap; word-break:break-word; font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  background:#F7FAFB; border:1px solid var(--borde); border-radius:8px; padding:12px; margin:8px 0 0;
+  white-space:pre-wrap; word-break:break-word; font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:none; border:0; border-top:1px solid var(--borde); border-radius:0; padding:10px 0 0; margin:10px 0 0;
+}
+.aviso-inf{color:var(--texto-suave); font-size:13px; margin:2px 2px 12px; display:flex; gap:7px; align-items:baseline}
+.aviso-inf::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--ambar); flex:none; transform:translateY(4px)}
+@media (max-width:640px){
+  .bloque-informe{padding:11px 12px}
+  .bloque-informe pre{font-size:13px}
 }
 
 /* ---- pacientes ---- */
@@ -1970,12 +1977,12 @@ function renderInformeDia(){
   const avisos = [];
   if(pend) avisos.push(pend+' cita'+(pend===1?'':'s')+' sin marcar asistencia');
   if(primeras) avisos.push(primeras+(primeras===1?' 1ª sesión':' 1ª sesiones')+' (sin informe de seguimiento)');
-  if(avisos.length) h += '<div class="card suave" style="font-size:13.5px">No se incluyen: '+avisos.join(' · ')+'.</div>';
+  if(avisos.length) h += '<p class="aviso-inf">No se incluyen: '+avisos.join(' · ')+'.</p>';
   h += listos.map(s=>{
     return '<div class="card bloque-informe" data-sid="'+s.id+'">'+
-      '<div class="fila-botones" style="justify-content:space-between; align-items:baseline">'+
-      '<span><b>'+esc(nombreDe(s))+'</b> <span class="suave" style="font-size:12.5px">'+esc(cabeceraSesion(s))+'</span></span>'+
-      '<button class="btn mini" data-a="copiar">Copiar</button></div>'+
+      '<div class="fila-botones cab-inf" style="justify-content:space-between; align-items:flex-start; flex-wrap:nowrap; gap:10px">'+
+      '<span style="flex:1; min-width:0"><b>'+esc(nombreDe(s))+'</b> <span class="suave" style="font-size:12.5px">'+esc(cabeceraSesion(s))+'</span></span>'+
+      '<button class="btn mini" data-a="copiar" style="flex:none">Copiar</button></div>'+
       '<pre>'+esc(resumenClinico(s))+'</pre></div>';
   }).join('');
   cont.innerHTML = h;
