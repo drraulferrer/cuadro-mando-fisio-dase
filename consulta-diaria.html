@@ -1824,8 +1824,8 @@ $('#btnOCR').addEventListener('click', async ()=>{
   }
 });
 /* ---- añadir por nº de orden: lee de la foto solo esa fila ---- */
-$('#btnPorOrd').addEventListener('click', ()=>{
-  if(!FOTOS[fechaActual]){ toast('Primero haz la foto de la hoja'); return; }
+$('#btnPorOrd').addEventListener('click', async ()=>{
+  if(!(await fotoObtener(fechaActual))){ toast('Primero haz la foto de la hoja'); return; }
   $('#ordInput').value=''; $('#ordProgreso').textContent = ocrCache[fechaActual] ? 'Foto ya leída: la búsqueda es inmediata.' : 'La primera búsqueda leerá la foto (unos segundos).';
   abrirModal('modalOrd');
   setTimeout(()=>$('#ordInput').focus(), 50);
